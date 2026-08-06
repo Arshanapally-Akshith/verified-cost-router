@@ -7,6 +7,9 @@ dependencies = [
     "langgraph>=1.2,<2.0",
     "requests>=2.31",
     "ijson>=3.2",
+    "sentence-transformers>=3.0",
+    "faiss-cpu>=1.8",
+    "numpy>=1.26",
 ]
 
 [project.optional-dependencies]

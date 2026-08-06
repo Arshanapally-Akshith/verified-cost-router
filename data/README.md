@@ -1,7 +1,8 @@
 # data/
 
-Phase 1 data-prep outputs (BUILD.md section 2). This is dataset provenance
-documentation, not the project README (that's Phase 7).
+Phase 1 data-prep outputs (BUILD.md section 2) and Phase 2 cache-tuning
+outputs (BUILD.md section 3 / ARCHITECTURE.md 4.1). This is dataset and
+artifact provenance documentation, not the project README (that's Phase 7).
 
 ## `replay_sample.jsonl` (generated, gitignored)
 
@@ -43,3 +44,33 @@ definition (each item's `rationale` field records why the label was
 assigned) before being committed. Schema is enforced by
 `verified_cost_router.data_prep.adversarial_eval.load_adversarial_eval_set`,
 exercised in `tests/test_adversarial_eval.py`.
+
+## `cache_thresholds.json` (generated, committed)
+
+The similarity cutoffs the cache layer uses to classify a lookup as
+`no_match` / `risky_hit` / `high_confidence_hit`, chosen by sweeping a
+grid against `adversarial_eval_set.json`'s `cache_pairs` rather than
+picked by eye (ARCHITECTURE.md 4.1). Regenerate with:
+
+```bash
+python scripts/tune_cache_thresholds.py
+```
+
+**Current result: high_confidence=0.86, risky=0.50, precision=59.7% at
+recall=100%.** That precision ceiling is a real finding, not a bug: this
+project's own true_duplicate and near_miss similarity distributions
+overlap heavily under `all-MiniLM-L6-v2` (near_miss pairs range up to
+0.996 cosine similarity, true_duplicate pairs only up to 0.973 -- see
+`cache_threshold_sweep.md` for the full breakdown and the specific
+pairs responsible, e.g. "rewrite passive to active voice" vs "rewrite
+active to passive voice" at 0.996). No single cutoff can cleanly serve
+that top ~40% of high-confidence matches unverified -- which is the
+GPTCache failure mode ARCHITECTURE.md section 1 names, confirmed
+empirically here, and precisely why the pipeline routes the risky band
+through a Verifier (Phase 4) instead of trusting a threshold alone.
+
+## `cache_threshold_sweep.md` (generated, committed)
+
+The full sweep report behind the thresholds above: similarity
+distribution summary, the hardest (highest-similarity) near-miss pairs,
+and the top 10 threshold candidates considered.
