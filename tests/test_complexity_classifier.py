@@ -9,7 +9,7 @@ from __future__ import annotations
 import pytest
 from fakes import FakeChatCompletionClient
 
-from verified_cost_router.router.classifier import ClassificationError, ComplexityClassifier
+from verified_cost_router.router.classifier import ClassificationError, ClassificationResult, ComplexityClassifier
 
 
 def test_classify_returns_simple_for_clean_simple_response():
@@ -78,3 +78,21 @@ def test_classify_passes_model_and_temperature_to_client():
 
     assert client.last_model == "my-model"
     assert client.last_temperature == 0.3
+
+
+def test_classify_with_usage_returns_label_and_token_counts():
+    client = FakeChatCompletionClient(next_content="complex")
+    classifier = ComplexityClassifier(client, model="my-model")
+
+    result = classifier.classify_with_usage("some query")
+
+    assert result == ClassificationResult(
+        label="complex", model="my-model", prompt_tokens=7, completion_tokens=1
+    )
+
+
+def test_classify_delegates_to_classify_with_usage():
+    client = FakeChatCompletionClient(next_content="simple")
+    classifier = ComplexityClassifier(client, model="my-model")
+
+    assert classifier.classify("q") == classifier.classify_with_usage("q").label

@@ -12,11 +12,22 @@ replaces the `router` stub node with a call into this class.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Literal
 
 from verified_cost_router.llm.groq_client import ChatCompletionClient, ChatMessage
 
 ComplexityLabel = Literal["simple", "complex"]
+
+
+@dataclass(frozen=True)
+class ClassificationResult:
+    """A classification plus the token usage it cost, for cost accounting."""
+
+    label: ComplexityLabel
+    model: str
+    prompt_tokens: int
+    completion_tokens: int
 
 _MAX_RESPONSE_TOKENS = 8
 
@@ -62,11 +73,22 @@ class ComplexityClassifier:
     def classify(self, query: str) -> ComplexityLabel:
         """Classify `query`. Raises ClassificationError if the model's
         response can't be resolved to "simple" or "complex"."""
+        return self.classify_with_usage(query).label
+
+    def classify_with_usage(self, query: str) -> ClassificationResult:
+        """Like `classify`, but also returns the token usage of the call,
+        for per-request cost accounting (ARCHITECTURE.md 4.4-4.5)."""
         messages = self._build_messages(query)
         result = self._client.chat_completion(
             self._model, messages, temperature=self._temperature, max_tokens=_MAX_RESPONSE_TOKENS
         )
-        return self._parse_label(result.content, query)
+        label = self._parse_label(result.content, query)
+        return ClassificationResult(
+            label=label,
+            model=result.model,
+            prompt_tokens=result.prompt_tokens,
+            completion_tokens=result.completion_tokens,
+        )
 
     def _build_messages(self, query: str) -> list[ChatMessage]:
         messages = [ChatMessage(role="system", content=_SYSTEM_PROMPT)]

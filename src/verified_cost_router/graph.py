@@ -12,18 +12,39 @@ Graph shape mirrors ARCHITECTURE.md section 2:
     verifier_output --pass--------------------------------------->  log_and_cache_write
     verifier_output --fail (escalate)--> generate_strong
 
-Node implementations are Phase 0 stubs (see nodes.py); this module only
-owns the graph shape and the conditional-edge routing logic, which is
-real and will not change when the stubs are replaced with real logic.
+This module owns only the graph shape and the conditional-edge routing
+logic -- it never cares which module supplies node behavior, only that
+`state["cache_result"]` etc. are set once the corresponding node has run.
+That's what makes two callers possible from the same topology:
+
+- build_graph(): wires the Phase 0 stub nodes (verified_cost_router.nodes).
+  Kept unchanged for tests/test_graph_skeleton.py, which proves the graph
+  shape/edges without any real cache, router, or verifier logic.
+- build_pipeline_graph(nodes): wires a pipeline.nodes.PipelineNodes
+  instance -- the real Phase 4 pipeline, identical topology.
 """
 
 from __future__ import annotations
 
+from typing import Protocol
+
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from verified_cost_router import nodes
+from verified_cost_router import nodes as stub_nodes
 from verified_cost_router.state import GraphState
+
+
+class NodeProvider(Protocol):
+    """Structural shape both the stub `nodes` module and PipelineNodes satisfy."""
+
+    def cache_check(self, state: GraphState) -> dict: ...
+    def verifier_cache(self, state: GraphState) -> dict: ...
+    def router(self, state: GraphState) -> dict: ...
+    def generate_cheap(self, state: GraphState) -> dict: ...
+    def generate_strong(self, state: GraphState) -> dict: ...
+    def verifier_output(self, state: GraphState) -> dict: ...
+    def log_and_cache_write(self, state: GraphState) -> dict: ...
 
 
 def _route_after_cache_check(state: GraphState) -> str:
@@ -47,16 +68,16 @@ def _route_after_verifier_output(state: GraphState) -> str:
     return "log_and_cache_write" if state["verifier_output_result"] == "pass" else "generate_strong"
 
 
-def build_graph() -> CompiledStateGraph:
+def _wire(node_provider: NodeProvider) -> StateGraph:
     graph = StateGraph(GraphState)
 
-    graph.add_node("cache_check", nodes.cache_check)
-    graph.add_node("verifier_cache", nodes.verifier_cache)
-    graph.add_node("router", nodes.router)
-    graph.add_node("generate_cheap", nodes.generate_cheap)
-    graph.add_node("generate_strong", nodes.generate_strong)
-    graph.add_node("verifier_output", nodes.verifier_output)
-    graph.add_node("log_and_cache_write", nodes.log_and_cache_write)
+    graph.add_node("cache_check", node_provider.cache_check)
+    graph.add_node("verifier_cache", node_provider.verifier_cache)
+    graph.add_node("router", node_provider.router)
+    graph.add_node("generate_cheap", node_provider.generate_cheap)
+    graph.add_node("generate_strong", node_provider.generate_strong)
+    graph.add_node("verifier_output", node_provider.verifier_output)
+    graph.add_node("log_and_cache_write", node_provider.log_and_cache_write)
 
     graph.set_entry_point("cache_check")
 
@@ -89,4 +110,21 @@ def build_graph() -> CompiledStateGraph:
 
     graph.add_edge("log_and_cache_write", END)
 
-    return graph.compile()
+    return graph
+
+
+def build_graph() -> CompiledStateGraph:
+    """The Phase 0 walking-skeleton graph: stub nodes only. Proves the
+    topology/edges in tests/test_graph_skeleton.py -- not for real use,
+    see build_pipeline_graph()."""
+    return _wire(stub_nodes).compile()
+
+
+def build_pipeline_graph(nodes: NodeProvider) -> CompiledStateGraph:
+    """The real Phase 4 pipeline: identical topology to build_graph(),
+    wired to real cache/router/verifier/generation nodes instead of stubs.
+
+    `nodes` is typically a pipeline.nodes.PipelineNodes built via
+    pipeline.dependencies.build_pipeline_nodes().
+    """
+    return _wire(nodes).compile()

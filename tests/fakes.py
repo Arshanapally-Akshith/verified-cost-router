@@ -10,6 +10,11 @@ Embedders:
 LLM client:
 - FakeChatCompletionClient: scripted single-response ChatCompletionClient
   for testing prompt-building/response-parsing without a real model call.
+
+Pipeline-node doubles (verified_cost_router.pipeline.nodes.PipelineNodes
+takes these as separate objects, so each can be configured independently
+without needing to script a shared client across multiple call sites):
+- FakeClassifier, FakeVerifier
 """
 
 from __future__ import annotations
@@ -17,6 +22,8 @@ from __future__ import annotations
 import numpy as np
 
 from verified_cost_router.llm.groq_client import ChatCompletionResult, ChatMessage
+from verified_cost_router.router.classifier import ClassificationResult, ComplexityLabel
+from verified_cost_router.verifier.verifier import VerificationOutcome, VerifierLabel
 
 
 class FakeEmbedder:
@@ -71,6 +78,7 @@ class FakeChatCompletionClient:
 
     def __init__(self, next_content: str) -> None:
         self.next_content = next_content
+        self.call_count = 0
         self.last_model: str | None = None
         self.last_messages: list[ChatMessage] | None = None
         self.last_temperature: float | None = None
@@ -84,10 +92,55 @@ class FakeChatCompletionClient:
         temperature: float = 0.0,
         max_tokens: int | None = None,
     ) -> ChatCompletionResult:
+        self.call_count += 1
         self.last_model = model
         self.last_messages = list(messages)
         self.last_temperature = temperature
         self.last_max_tokens = max_tokens
         return ChatCompletionResult(
-            content=self.next_content, model=model, prompt_tokens=0, completion_tokens=0
+            content=self.next_content, model=model, prompt_tokens=7, completion_tokens=1
+        )
+
+
+class FakeClassifier:
+    """Fake ComplexityClassifier: always classifies as `label`."""
+
+    def __init__(self, label: ComplexityLabel, model: str = "fake-cheap-model") -> None:
+        self.label = label
+        self.model = model
+        self.calls: list[str] = []
+
+    def classify_with_usage(self, query: str) -> ClassificationResult:
+        self.calls.append(query)
+        return ClassificationResult(label=self.label, model=self.model, prompt_tokens=6, completion_tokens=1)
+
+
+class FakeVerifier:
+    """Fake Verifier with independently configurable verdicts per method,
+    since a single request can call verify_cache_hit and verify_output
+    at different points (e.g. a risky cache-hit fails verification, then
+    the router path's own output verification also runs)."""
+
+    def __init__(
+        self,
+        cache_hit_label: VerifierLabel = "pass",
+        output_label: VerifierLabel = "pass",
+        model: str = "fake-cheap-model",
+    ) -> None:
+        self.cache_hit_label = cache_hit_label
+        self.output_label = output_label
+        self.model = model
+        self.cache_hit_calls: list[tuple[str, str, str]] = []
+        self.output_calls: list[tuple[str, str]] = []
+
+    def verify_cache_hit(self, query: str, cached_query: str, cached_response: str) -> VerificationOutcome:
+        self.cache_hit_calls.append((query, cached_query, cached_response))
+        return VerificationOutcome(
+            label=self.cache_hit_label, model=self.model, prompt_tokens=8, completion_tokens=1
+        )
+
+    def verify_output(self, query: str, output: str) -> VerificationOutcome:
+        self.output_calls.append((query, output))
+        return VerificationOutcome(
+            label=self.output_label, model=self.model, prompt_tokens=8, completion_tokens=1
         )
