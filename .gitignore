@@ -20,3 +20,8 @@ dist/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Large derived dataset -- regenerate with scripts/prepare_replay_sample.py.
+# The hand-built adversarial eval set and the composition report it
+# produces are small and reproducibility-sensitive, so those stay tracked.
+data/replay_sample.jsonl

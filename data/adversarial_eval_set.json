@@ -1,0 +1,1156 @@
+{
+  "cache_pairs": [
+    {
+      "id": "dup-001",
+      "category": "true_duplicate",
+      "query_a": "What temperature does water boil at, in Celsius, at sea level?",
+      "query_b": "At sea level, what's the boiling point of water in degrees Celsius?",
+      "expect_cache_hit": true,
+      "rationale": "Same factual question about water's boiling point, phrased two ways."
+    },
+    {
+      "id": "dup-002",
+      "category": "true_duplicate",
+      "query_a": "What's the difference between a list and a tuple in Python?",
+      "query_b": "In Python, how do lists differ from tuples?",
+      "expect_cache_hit": true,
+      "rationale": "Same comparison question, subject/object order swapped."
+    },
+    {
+      "id": "dup-003",
+      "category": "true_duplicate",
+      "query_a": "What is the capital city of Australia?",
+      "query_b": "Which city is the capital of Australia?",
+      "expect_cache_hit": true,
+      "rationale": "Identical factual lookup, reworded."
+    },
+    {
+      "id": "dup-004",
+      "category": "true_duplicate",
+      "query_a": "How do I make chocolate chip cookies from scratch?",
+      "query_b": "What's a recipe for homemade chocolate chip cookies?",
+      "expect_cache_hit": true,
+      "rationale": "Both ask for the same recipe."
+    },
+    {
+      "id": "dup-005",
+      "category": "true_duplicate",
+      "query_a": "How do I get a red wine stain out of a carpet?",
+      "query_b": "What's the best way to remove a red wine stain from carpet?",
+      "expect_cache_hit": true,
+      "rationale": "Same cleaning task, different phrasing."
+    },
+    {
+      "id": "dup-006",
+      "category": "true_duplicate",
+      "query_a": "How long should my resume be for a mid-career job application?",
+      "query_b": "What's the ideal resume length when applying for a mid-career role?",
+      "expect_cache_hit": true,
+      "rationale": "Same question about resume length norms."
+    },
+    {
+      "id": "dup-007",
+      "category": "true_duplicate",
+      "query_a": "What's the difference between git rebase and git merge?",
+      "query_b": "How does git rebase differ from git merge?",
+      "expect_cache_hit": true,
+      "rationale": "Same comparison, reworded."
+    },
+    {
+      "id": "dup-008",
+      "category": "true_duplicate",
+      "query_a": "What's the formula for compound interest?",
+      "query_b": "How do you calculate compound interest?",
+      "expect_cache_hit": true,
+      "rationale": "Both want the compound interest formula."
+    },
+    {
+      "id": "dup-009",
+      "category": "true_duplicate",
+      "query_a": "How much chocolate is dangerous for a dog to eat?",
+      "query_b": "What amount of chocolate is toxic to dogs?",
+      "expect_cache_hit": true,
+      "rationale": "Same veterinary safety threshold question."
+    },
+    {
+      "id": "dup-010",
+      "category": "true_duplicate",
+      "query_a": "When is the best time of year to visit Japan?",
+      "query_b": "What's the ideal season to travel to Japan?",
+      "expect_cache_hit": true,
+      "rationale": "Same travel timing question."
+    },
+    {
+      "id": "dup-011",
+      "category": "true_duplicate",
+      "query_a": "What is photosynthesis?",
+      "query_b": "Can you explain what photosynthesis is?",
+      "expect_cache_hit": true,
+      "rationale": "Same definitional request."
+    },
+    {
+      "id": "dup-012",
+      "category": "true_duplicate",
+      "query_a": "How do I renew my US passport?",
+      "query_b": "What's the process for renewing a United States passport?",
+      "expect_cache_hit": true,
+      "rationale": "Same administrative process question."
+    },
+    {
+      "id": "dup-013",
+      "category": "true_duplicate",
+      "query_a": "What's the difference between TCP and UDP?",
+      "query_b": "How do TCP and UDP protocols differ?",
+      "expect_cache_hit": true,
+      "rationale": "Same networking comparison, reworded."
+    },
+    {
+      "id": "dup-014",
+      "category": "true_duplicate",
+      "query_a": "How do I start composting at home?",
+      "query_b": "What's the process for starting a home compost bin?",
+      "expect_cache_hit": true,
+      "rationale": "Same how-to request."
+    },
+    {
+      "id": "dup-015",
+      "category": "true_duplicate",
+      "query_a": "Why does the sky appear blue?",
+      "query_b": "What causes the sky to look blue?",
+      "expect_cache_hit": true,
+      "rationale": "Same physics question about sky color."
+    },
+    {
+      "id": "dup-016",
+      "category": "true_duplicate",
+      "query_a": "What's the difference between an index fund and a mutual fund?",
+      "query_b": "How do index funds differ from mutual funds?",
+      "expect_cache_hit": true,
+      "rationale": "Same investing comparison, reworded."
+    },
+    {
+      "id": "dup-017",
+      "category": "true_duplicate",
+      "query_a": "How can I reduce background noise in a recorded audio file?",
+      "query_b": "What's a way to remove background noise from an audio recording?",
+      "expect_cache_hit": true,
+      "rationale": "Same audio-cleanup request."
+    },
+    {
+      "id": "dup-018",
+      "category": "true_duplicate",
+      "query_a": "How often should I water a snake plant?",
+      "query_b": "What's the recommended watering frequency for a snake plant?",
+      "expect_cache_hit": true,
+      "rationale": "Same houseplant care question."
+    },
+    {
+      "id": "dup-019",
+      "category": "true_duplicate",
+      "query_a": "What's the difference between weather and climate?",
+      "query_b": "How does climate differ from weather?",
+      "expect_cache_hit": true,
+      "rationale": "Same conceptual comparison, reworded."
+    },
+    {
+      "id": "dup-020",
+      "category": "true_duplicate",
+      "query_a": "What's the formula to convert Celsius to Fahrenheit?",
+      "query_b": "How do you convert a temperature from Celsius to Fahrenheit?",
+      "expect_cache_hit": true,
+      "rationale": "Same unit-conversion request."
+    },
+    {
+      "id": "dup-021",
+      "category": "true_duplicate",
+      "query_a": "What are some tips to improve sleep quality?",
+      "query_b": "How can I sleep better at night?",
+      "expect_cache_hit": true,
+      "rationale": "Same request for sleep-improvement advice."
+    },
+    {
+      "id": "dup-022",
+      "category": "true_duplicate",
+      "query_a": "What's the difference between a stock and a bond?",
+      "query_b": "How do stocks differ from bonds as investments?",
+      "expect_cache_hit": true,
+      "rationale": "Same investing comparison, reworded."
+    },
+    {
+      "id": "dup-023",
+      "category": "true_duplicate",
+      "query_a": "What does Newton's second law of motion state?",
+      "query_b": "Can you state Newton's second law of motion?",
+      "expect_cache_hit": true,
+      "rationale": "Same physics fact request."
+    },
+    {
+      "id": "dup-024",
+      "category": "true_duplicate",
+      "query_a": "How do I change a flat tire on a bicycle?",
+      "query_b": "What's the process for fixing a flat bike tire?",
+      "expect_cache_hit": true,
+      "rationale": "Same bike-repair how-to."
+    },
+    {
+      "id": "dup-025",
+      "category": "true_duplicate",
+      "query_a": "What's the difference between a virus and a bacterium?",
+      "query_b": "How do bacteria differ from viruses?",
+      "expect_cache_hit": true,
+      "rationale": "Same biology comparison, reworded."
+    },
+    {
+      "id": "dup-026",
+      "category": "true_duplicate",
+      "query_a": "How do I write a good cover letter for a job application?",
+      "query_b": "What makes an effective job application cover letter?",
+      "expect_cache_hit": true,
+      "rationale": "Same job-application writing request."
+    },
+    {
+      "id": "dup-027",
+      "category": "true_duplicate",
+      "query_a": "What's the difference between SQL and NoSQL databases?",
+      "query_b": "How do NoSQL databases differ from SQL databases?",
+      "expect_cache_hit": true,
+      "rationale": "Same database comparison, reworded."
+    },
+    {
+      "id": "dup-028",
+      "category": "true_duplicate",
+      "query_a": "How do I properly clean a cast iron skillet?",
+      "query_b": "What's the right way to clean cast iron cookware?",
+      "expect_cache_hit": true,
+      "rationale": "Same cookware-care request."
+    },
+    {
+      "id": "dup-029",
+      "category": "true_duplicate",
+      "query_a": "How do you calculate BMI?",
+      "query_b": "What's the formula for body mass index?",
+      "expect_cache_hit": true,
+      "rationale": "Same formula request."
+    },
+    {
+      "id": "dup-030",
+      "category": "true_duplicate",
+      "query_a": "What's the difference between latitude and longitude?",
+      "query_b": "How do latitude and longitude differ?",
+      "expect_cache_hit": true,
+      "rationale": "Same geography comparison, reworded."
+    },
+    {
+      "id": "dup-031",
+      "category": "true_duplicate",
+      "query_a": "How do I find my WiFi password if I forgot it?",
+      "query_b": "What's the way to recover a forgotten WiFi password?",
+      "expect_cache_hit": true,
+      "rationale": "Same account-recovery request."
+    },
+    {
+      "id": "dup-032",
+      "category": "true_duplicate",
+      "query_a": "What's the difference between an introvert and an extrovert?",
+      "query_b": "How does an introvert differ from an extrovert?",
+      "expect_cache_hit": true,
+      "rationale": "Same personality-psychology comparison."
+    },
+    {
+      "id": "dup-033",
+      "category": "true_duplicate",
+      "query_a": "How should I train for my first 5K run?",
+      "query_b": "What's a good training plan for a first-time 5K runner?",
+      "expect_cache_hit": true,
+      "rationale": "Same training-plan request."
+    },
+    {
+      "id": "dup-034",
+      "category": "true_duplicate",
+      "query_a": "What's a cold front versus a warm front?",
+      "query_b": "How does a warm front differ from a cold front?",
+      "expect_cache_hit": true,
+      "rationale": "Same meteorology comparison, reworded."
+    },
+    {
+      "id": "dup-035",
+      "category": "true_duplicate",
+      "query_a": "How do I get a business license to start a small business?",
+      "query_b": "What's the process for obtaining a small business license?",
+      "expect_cache_hit": true,
+      "rationale": "Same regulatory process question."
+    },
+    {
+      "id": "dup-036",
+      "category": "true_duplicate",
+      "query_a": "What's the difference between RAM and ROM?",
+      "query_b": "How does ROM differ from RAM in a computer?",
+      "expect_cache_hit": true,
+      "rationale": "Same hardware comparison, reworded."
+    },
+    {
+      "id": "dup-037",
+      "category": "true_duplicate",
+      "query_a": "How do I remove rust from metal tools?",
+      "query_b": "What's an effective way to get rust off tools?",
+      "expect_cache_hit": true,
+      "rationale": "Same tool-maintenance request."
+    },
+    {
+      "id": "dup-038",
+      "category": "true_duplicate",
+      "query_a": "What's the difference between correlation and causation?",
+      "query_b": "How does causation differ from correlation?",
+      "expect_cache_hit": true,
+      "rationale": "Same statistics concept, reworded."
+    },
+    {
+      "id": "dup-039",
+      "category": "true_duplicate",
+      "query_a": "How can I plan a budget trip to Europe?",
+      "query_b": "What's a good way to travel Europe on a tight budget?",
+      "expect_cache_hit": true,
+      "rationale": "Same travel-planning request."
+    },
+    {
+      "id": "dup-040",
+      "category": "true_duplicate",
+      "query_a": "What's the difference between AI and machine learning?",
+      "query_b": "How does machine learning relate to and differ from artificial intelligence?",
+      "expect_cache_hit": true,
+      "rationale": "Same conceptual comparison, reworded."
+    },
+    {
+      "id": "dup-041",
+      "category": "true_duplicate",
+      "query_a": "How can I get better at public speaking?",
+      "query_b": "What are some ways to improve my public speaking skills?",
+      "expect_cache_hit": true,
+      "rationale": "Same skill-improvement request."
+    },
+    {
+      "id": "dup-042",
+      "category": "true_duplicate",
+      "query_a": "What's the difference between yoga and pilates?",
+      "query_b": "How does pilates differ from yoga?",
+      "expect_cache_hit": true,
+      "rationale": "Same fitness comparison, reworded."
+    },
+    {
+      "id": "dup-043",
+      "category": "true_duplicate",
+      "query_a": "How do you calculate simple interest?",
+      "query_b": "What's the formula for simple interest?",
+      "expect_cache_hit": true,
+      "rationale": "Same formula request."
+    },
+    {
+      "id": "dup-044",
+      "category": "true_duplicate",
+      "query_a": "What's the difference between a firewall and antivirus software?",
+      "query_b": "How does antivirus software differ from a firewall?",
+      "expect_cache_hit": true,
+      "rationale": "Same security-tooling comparison."
+    },
+    {
+      "id": "dup-045",
+      "category": "true_duplicate",
+      "query_a": "What's the difference between leasing and buying a car?",
+      "query_b": "How does buying a car differ from leasing one?",
+      "expect_cache_hit": true,
+      "rationale": "Same financial comparison, reworded."
+    },
+    {
+      "id": "dup-046",
+      "category": "true_duplicate",
+      "query_a": "What's the difference between HTTP and HTTPS?",
+      "query_b": "How does HTTPS differ from HTTP?",
+      "expect_cache_hit": true,
+      "rationale": "Same networking/security comparison."
+    },
+    {
+      "id": "dup-047",
+      "category": "true_duplicate",
+      "query_a": "What's the best way to store fresh basil so it doesn't wilt?",
+      "query_b": "How should I keep fresh basil from wilting in storage?",
+      "expect_cache_hit": true,
+      "rationale": "Same food-storage request."
+    },
+    {
+      "id": "dup-048",
+      "category": "true_duplicate",
+      "query_a": "What are the financial differences between renting and owning a home?",
+      "query_b": "Financially, how does owning a home compare to renting?",
+      "expect_cache_hit": true,
+      "rationale": "Same personal-finance comparison."
+    },
+    {
+      "id": "dup-049",
+      "category": "true_duplicate",
+      "query_a": "What's the difference between stress and anxiety?",
+      "query_b": "How does anxiety differ from ordinary stress?",
+      "expect_cache_hit": true,
+      "rationale": "Same mental-health concept comparison."
+    },
+    {
+      "id": "dup-050",
+      "category": "true_duplicate",
+      "query_a": "What's the difference between a debit card and a credit card?",
+      "query_b": "How does a credit card differ from a debit card?",
+      "expect_cache_hit": true,
+      "rationale": "Same personal-finance comparison."
+    },
+    {
+      "id": "nm-001",
+      "category": "near_miss",
+      "query_a": "How do I increase my credit score quickly?",
+      "query_b": "How do I decrease my credit score quickly?",
+      "expect_cache_hit": false,
+      "rationale": "'increase' vs 'decrease' flips the goal; a duplicate-only cache would serve raise-score advice for a lower-score question."
+    },
+    {
+      "id": "nm-002",
+      "category": "near_miss",
+      "query_a": "What foods are safe for dogs to eat?",
+      "query_b": "What foods are toxic for dogs to eat?",
+      "expect_cache_hit": false,
+      "rationale": "'safe' vs 'toxic' flips the list entirely; serving one for the other is a real safety risk."
+    },
+    {
+      "id": "nm-003",
+      "category": "near_miss",
+      "query_a": "How do I import a CSV file into pandas?",
+      "query_b": "How do I export a pandas DataFrame to CSV?",
+      "expect_cache_hit": false,
+      "rationale": "'import' vs 'export' is the opposite data-flow direction with different code."
+    },
+    {
+      "id": "nm-004",
+      "category": "near_miss",
+      "query_a": "What lowers blood pressure naturally?",
+      "query_b": "What raises blood pressure naturally?",
+      "expect_cache_hit": false,
+      "rationale": "'lowers' vs 'raises' flips the intent; conflating them risks harmful advice."
+    },
+    {
+      "id": "nm-005",
+      "category": "near_miss",
+      "query_a": "What are the tax benefits of selling a rental property?",
+      "query_b": "What are the tax benefits of buying a rental property?",
+      "expect_cache_hit": false,
+      "rationale": "'selling' vs 'buying' triggers entirely different tax rules (capital gains vs deductions)."
+    },
+    {
+      "id": "nm-006",
+      "category": "near_miss",
+      "query_a": "How can I build muscle mass fast?",
+      "query_b": "How can I lose muscle mass fast?",
+      "expect_cache_hit": false,
+      "rationale": "'build' vs 'lose' flips the goal completely."
+    },
+    {
+      "id": "nm-007",
+      "category": "near_miss",
+      "query_a": "How do I open a port on my router?",
+      "query_b": "How do I close a port on my router?",
+      "expect_cache_hit": false,
+      "rationale": "'open' vs 'close' is the opposite router configuration."
+    },
+    {
+      "id": "nm-008",
+      "category": "near_miss",
+      "query_a": "How do I encrypt a file using AES?",
+      "query_b": "How do I decrypt a file using AES?",
+      "expect_cache_hit": false,
+      "rationale": "'encrypt' vs 'decrypt' need different keys/code paths."
+    },
+    {
+      "id": "nm-009",
+      "category": "near_miss",
+      "query_a": "What's a good diet plan to gain weight?",
+      "query_b": "What's a good diet plan to lose weight?",
+      "expect_cache_hit": false,
+      "rationale": "'gain' vs 'lose' flips the caloric direction of the whole plan."
+    },
+    {
+      "id": "nm-010",
+      "category": "near_miss",
+      "query_a": "How do I turn on notifications for this app?",
+      "query_b": "How do I turn off notifications for this app?",
+      "expect_cache_hit": false,
+      "rationale": "'on' vs 'off' is the opposite setting."
+    },
+    {
+      "id": "nm-011",
+      "category": "near_miss",
+      "query_a": "How does raising interest rates affect inflation?",
+      "query_b": "How does lowering interest rates affect inflation?",
+      "expect_cache_hit": false,
+      "rationale": "'raising' vs 'lowering' produces opposite macroeconomic effects."
+    },
+    {
+      "id": "nm-012",
+      "category": "near_miss",
+      "query_a": "How do I add a user to a Linux group?",
+      "query_b": "How do I remove a user from a Linux group?",
+      "expect_cache_hit": false,
+      "rationale": "'add' vs 'remove' are opposite admin actions."
+    },
+    {
+      "id": "nm-013",
+      "category": "near_miss",
+      "query_a": "How do I start a systemd service?",
+      "query_b": "How do I stop a systemd service?",
+      "expect_cache_hit": false,
+      "rationale": "'start' vs 'stop' are opposite commands."
+    },
+    {
+      "id": "nm-014",
+      "category": "near_miss",
+      "query_a": "How can I increase humidity in my home during winter?",
+      "query_b": "How can I decrease humidity in my home during summer?",
+      "expect_cache_hit": false,
+      "rationale": "'increase' vs 'decrease' need opposite equipment (humidifier vs dehumidifier)."
+    },
+    {
+      "id": "nm-015",
+      "category": "near_miss",
+      "query_a": "When is the best time to buy a stock?",
+      "query_b": "When is the best time to sell a stock?",
+      "expect_cache_hit": false,
+      "rationale": "'buy' vs 'sell' timing advice is not interchangeable."
+    },
+    {
+      "id": "nm-016",
+      "category": "near_miss",
+      "query_a": "Is it legal to make a U-turn at a red light in this state?",
+      "query_b": "Is it illegal to make a U-turn at a red light in this state?",
+      "expect_cache_hit": false,
+      "rationale": "'legal' vs 'illegal' inverts the question even though the wording is almost identical."
+    },
+    {
+      "id": "nm-017",
+      "category": "near_miss",
+      "query_a": "Is it safe to take ibuprofen with blood pressure medication?",
+      "query_b": "Is it unsafe to take ibuprofen with blood pressure medication?",
+      "expect_cache_hit": false,
+      "rationale": "'safe' vs 'unsafe' inverts the framing of a medically sensitive question."
+    },
+    {
+      "id": "nm-018",
+      "category": "near_miss",
+      "query_a": "How can I increase my child's screen time in a balanced way?",
+      "query_b": "How can I decrease my child's screen time in a healthy way?",
+      "expect_cache_hit": false,
+      "rationale": "'increase' vs 'decrease' are opposite parenting goals."
+    },
+    {
+      "id": "nm-019",
+      "category": "near_miss",
+      "query_a": "What's the legal process for hiring a new employee?",
+      "query_b": "What's the legal process for firing an employee?",
+      "expect_cache_hit": false,
+      "rationale": "'hiring' vs 'firing' involve entirely different legal obligations."
+    },
+    {
+      "id": "nm-020",
+      "category": "near_miss",
+      "query_a": "What are the effects of drinking more caffeine?",
+      "query_b": "What are the effects of drinking less caffeine?",
+      "expect_cache_hit": false,
+      "rationale": "'more' vs 'less' produce different (often opposite) physiological effects."
+    },
+    {
+      "id": "nm-021",
+      "category": "near_miss",
+      "query_a": "How do I increase my phone's battery life?",
+      "query_b": "Why is my phone's battery life decreasing so fast?",
+      "expect_cache_hit": false,
+      "rationale": "One asks how to improve battery life, the other asks to diagnose a decline -- different intents despite similar wording."
+    },
+    {
+      "id": "nm-022",
+      "category": "near_miss",
+      "query_a": "Does exercise have a positive correlation with mood?",
+      "query_b": "Does exercise have a negative correlation with mood?",
+      "expect_cache_hit": false,
+      "rationale": "'positive' vs 'negative' flips the claimed relationship."
+    },
+    {
+      "id": "nm-023",
+      "category": "near_miss",
+      "query_a": "How do I renew my Netflix subscription?",
+      "query_b": "How do I cancel my Netflix subscription?",
+      "expect_cache_hit": false,
+      "rationale": "'renew' vs 'cancel' are opposite account actions."
+    },
+    {
+      "id": "nm-024",
+      "category": "near_miss",
+      "query_a": "What increases a used car's resale value?",
+      "query_b": "What decreases a used car's resale value?",
+      "expect_cache_hit": false,
+      "rationale": "'increases' vs 'decreases' are opposite factor lists."
+    },
+    {
+      "id": "nm-025",
+      "category": "near_miss",
+      "query_a": "How do I push my local commits to GitHub?",
+      "query_b": "How do I pull the latest commits from GitHub?",
+      "expect_cache_hit": false,
+      "rationale": "'push' vs 'pull' are opposite git operations."
+    },
+    {
+      "id": "nm-026",
+      "category": "near_miss",
+      "query_a": "What is a public key used for in encryption?",
+      "query_b": "What is a private key used for in encryption?",
+      "expect_cache_hit": false,
+      "rationale": "'public' vs 'private' key have different roles; swapping the answer breaks the crypto model."
+    },
+    {
+      "id": "nm-027",
+      "category": "near_miss",
+      "query_a": "How do I raise the pH of my garden soil?",
+      "query_b": "How do I lower the pH of my garden soil?",
+      "expect_cache_hit": false,
+      "rationale": "'raise' vs 'lower' need opposite soil amendments."
+    },
+    {
+      "id": "nm-028",
+      "category": "near_miss",
+      "query_a": "What does it mean to go long on a stock?",
+      "query_b": "What does it mean to go short on a stock?",
+      "expect_cache_hit": false,
+      "rationale": "'long' vs 'short' are opposite trading positions."
+    },
+    {
+      "id": "nm-029",
+      "category": "near_miss",
+      "query_a": "How do you add two fractions with different denominators?",
+      "query_b": "How do you subtract two fractions with different denominators?",
+      "expect_cache_hit": false,
+      "rationale": "'add' vs 'subtract' change the arithmetic procedure and result."
+    },
+    {
+      "id": "nm-030",
+      "category": "near_miss",
+      "query_a": "What are the economic effects of raising the minimum wage?",
+      "query_b": "What are the economic effects of lowering the minimum wage?",
+      "expect_cache_hit": false,
+      "rationale": "'raising' vs 'lowering' are opposite policy questions."
+    },
+    {
+      "id": "nm-031",
+      "category": "near_miss",
+      "query_a": "Does this price include tax?",
+      "query_b": "Does this price exclude tax?",
+      "expect_cache_hit": false,
+      "rationale": "'include' vs 'exclude' flip whether tax is already in the number."
+    },
+    {
+      "id": "nm-032",
+      "category": "near_miss",
+      "query_a": "What's the tax filing status for married couples filing jointly?",
+      "query_b": "What's the tax filing status for a single filer?",
+      "expect_cache_hit": false,
+      "rationale": "Different filing statuses have different brackets and rules despite the parallel phrasing."
+    },
+    {
+      "id": "nm-033",
+      "category": "near_miss",
+      "query_a": "How do I increase the resolution of an image without losing quality?",
+      "query_b": "How do I decrease the resolution of an image to reduce file size?",
+      "expect_cache_hit": false,
+      "rationale": "'increase' vs 'decrease' resolution are opposite goals with different techniques."
+    },
+    {
+      "id": "nm-034",
+      "category": "near_miss",
+      "query_a": "What weather does a warm front typically bring?",
+      "query_b": "What weather does a cold front typically bring?",
+      "expect_cache_hit": false,
+      "rationale": "'warm' vs 'cold' front bring different, often opposite, weather."
+    },
+    {
+      "id": "nm-035",
+      "category": "near_miss",
+      "query_a": "What BMI range is considered overweight?",
+      "query_b": "What BMI range is considered underweight?",
+      "expect_cache_hit": false,
+      "rationale": "'overweight' vs 'underweight' are opposite BMI categories."
+    },
+    {
+      "id": "nm-036",
+      "category": "near_miss",
+      "query_a": "How does a longer loan term affect total interest paid?",
+      "query_b": "How does a shorter loan term affect total interest paid?",
+      "expect_cache_hit": false,
+      "rationale": "'longer' vs 'shorter' term produce opposite interest outcomes."
+    },
+    {
+      "id": "nm-037",
+      "category": "near_miss",
+      "query_a": "How do I rewrite a sentence from passive voice to active voice?",
+      "query_b": "How do I rewrite a sentence from active voice to passive voice?",
+      "expect_cache_hit": false,
+      "rationale": "The conversion direction is reversed, so the rewrite rule is reversed too."
+    },
+    {
+      "id": "nm-038",
+      "category": "near_miss",
+      "query_a": "What time does the sun rise tomorrow in Seattle?",
+      "query_b": "What time does the sun set tomorrow in Seattle?",
+      "expect_cache_hit": false,
+      "rationale": "'rise' vs 'set' are different times of day with different answers."
+    },
+    {
+      "id": "nm-039",
+      "category": "near_miss",
+      "query_a": "Why are my plant's leaves turning brown from too much water?",
+      "query_b": "Why are my plant's leaves turning brown from too little water?",
+      "expect_cache_hit": false,
+      "rationale": "Same symptom, opposite cause -- the fix is opposite too."
+    },
+    {
+      "id": "nm-040",
+      "category": "near_miss",
+      "query_a": "What's the legal drinking age in this state?",
+      "query_b": "What's the legal smoking age in this state?",
+      "expect_cache_hit": false,
+      "rationale": "Different regulated activity with a different legal age despite parallel phrasing."
+    },
+    {
+      "id": "nm-041",
+      "category": "near_miss",
+      "query_a": "How can I get a lower APR on my credit card?",
+      "query_b": "Why did my credit card's APR increase?",
+      "expect_cache_hit": false,
+      "rationale": "One seeks a way to lower APR, the other asks to explain a rise -- different intents."
+    },
+    {
+      "id": "nm-042",
+      "category": "near_miss",
+      "query_a": "What's the correct way to inhale during this breathing exercise?",
+      "query_b": "What's the correct way to exhale during this breathing exercise?",
+      "expect_cache_hit": false,
+      "rationale": "'inhale' vs 'exhale' are different steps of the same exercise with different instructions."
+    },
+    {
+      "id": "nm-043",
+      "category": "near_miss",
+      "query_a": "What causes high latency on a web server?",
+      "query_b": "How do I reduce latency on a web server?",
+      "expect_cache_hit": false,
+      "rationale": "One asks for diagnosis, the other for a fix -- different intents despite overlapping topic."
+    },
+    {
+      "id": "nm-044",
+      "category": "near_miss",
+      "query_a": "Should I buy home gym equipment?",
+      "query_b": "Should I sell my home gym equipment?",
+      "expect_cache_hit": false,
+      "rationale": "'buy' vs 'sell' are opposite transactions with opposite reasoning."
+    },
+    {
+      "id": "nm-045",
+      "category": "near_miss",
+      "query_a": "What foods increase vitamin D levels?",
+      "query_b": "What conditions decrease vitamin D levels in the body?",
+      "expect_cache_hit": false,
+      "rationale": "One asks what raises levels, the other what lowers them -- different answer sets."
+    },
+    {
+      "id": "nm-046",
+      "category": "near_miss",
+      "query_a": "Is it legal to turn right on red in this state?",
+      "query_b": "Is it legal to turn left on red in this state?",
+      "expect_cache_hit": false,
+      "rationale": "'right' vs 'left' on red have very different legal defaults in most US states."
+    },
+    {
+      "id": "nm-047",
+      "category": "near_miss",
+      "query_a": "What increases my car insurance premium?",
+      "query_b": "What decreases my car insurance premium?",
+      "expect_cache_hit": false,
+      "rationale": "'increases' vs 'decreases' are opposite factor lists."
+    },
+    {
+      "id": "nm-048",
+      "category": "near_miss",
+      "query_a": "Should I stretch before a workout?",
+      "query_b": "Should I stretch after a workout?",
+      "expect_cache_hit": false,
+      "rationale": "'before' vs 'after' have different recommended stretch types (dynamic vs static)."
+    },
+    {
+      "id": "nm-049",
+      "category": "near_miss",
+      "query_a": "Why did this company increase its dividend payout?",
+      "query_b": "Why did this company cut its dividend payout?",
+      "expect_cache_hit": false,
+      "rationale": "'increase' vs 'cut' dividend are opposite corporate signals with different causes."
+    },
+    {
+      "id": "nm-050",
+      "category": "near_miss",
+      "query_a": "What makes a password strong?",
+      "query_b": "What makes a password weak?",
+      "expect_cache_hit": false,
+      "rationale": "'strong' vs 'weak' are opposite password qualities with opposite advice."
+    }
+  ],
+  "complexity_items": [
+    {
+      "id": "cx-001",
+      "category": "complexity_mislabeled",
+      "query": "Is it safe to mix bleach and ammonia?",
+      "true_complexity": "complex",
+      "rationale": "Short yes/no phrasing, but the correct answer requires precise chemistry knowledge (toxic chloramine gas) and must not be hedged or guessed."
+    },
+    {
+      "id": "cx-002",
+      "category": "complexity_mislabeled",
+      "query": "My 2-year-old swallowed a button battery, what should I do?",
+      "true_complexity": "complex",
+      "rationale": "Short and urgent-sounding, but it's a medical emergency requiring precise, correct first-aid guidance."
+    },
+    {
+      "id": "cx-003",
+      "category": "complexity_mislabeled",
+      "query": "Prove that the square root of 2 is irrational.",
+      "true_complexity": "complex",
+      "rationale": "Reads as a one-line request but needs a full, rigorous multi-step proof."
+    },
+    {
+      "id": "cx-004",
+      "category": "complexity_mislabeled",
+      "query": "Why does my code return NaN sometimes?",
+      "true_complexity": "complex",
+      "rationale": "Sounds like a quick debugging question but has many possible root causes requiring careful multi-step reasoning."
+    },
+    {
+      "id": "cx-005",
+      "category": "complexity_mislabeled",
+      "query": "Can I sue my landlord for this?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but requires jurisdiction-specific legal reasoning about tenant rights and evidence."
+    },
+    {
+      "id": "cx-006",
+      "category": "complexity_mislabeled",
+      "query": "Why is my SQL query slow?",
+      "true_complexity": "complex",
+      "rationale": "Looks like a simple lookup but needs reasoning about query plans, indexes, and data volume."
+    },
+    {
+      "id": "cx-007",
+      "category": "complexity_mislabeled",
+      "query": "Is it okay to take these two medications together?",
+      "true_complexity": "complex",
+      "rationale": "Short phrasing hides a pharmacological interaction question with real health stakes."
+    },
+    {
+      "id": "cx-008",
+      "category": "complexity_mislabeled",
+      "query": "What's wrong with my proof by induction?",
+      "true_complexity": "complex",
+      "rationale": "Short prompt, but requires careful line-by-line logical verification of the argument."
+    },
+    {
+      "id": "cx-009",
+      "category": "complexity_mislabeled",
+      "query": "Why did my bank account get flagged for fraud?",
+      "true_complexity": "complex",
+      "rationale": "Sounds like a factual lookup but requires reasoning through multiple possible fraud-detection triggers."
+    },
+    {
+      "id": "cx-010",
+      "category": "complexity_mislabeled",
+      "query": "Is my business idea going to work?",
+      "true_complexity": "complex",
+      "rationale": "Deceptively short, but a sound answer requires weighing market, competition, and execution factors together."
+    },
+    {
+      "id": "cx-011",
+      "category": "complexity_mislabeled",
+      "query": "Why is my plane ticket so expensive right now?",
+      "true_complexity": "complex",
+      "rationale": "Short question but the answer depends on reasoning through demand, fuel costs, and route competition simultaneously."
+    },
+    {
+      "id": "cx-012",
+      "category": "complexity_mislabeled",
+      "query": "Should I refinance my mortgage?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but a correct answer requires multi-variable financial reasoning (rate delta, fees, break-even time)."
+    },
+    {
+      "id": "cx-013",
+      "category": "complexity_mislabeled",
+      "query": "Why does this recursive function cause a stack overflow?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but needs a careful trace of the recursion and base-case logic."
+    },
+    {
+      "id": "cx-014",
+      "category": "complexity_mislabeled",
+      "query": "Is this investment a Ponzi scheme?",
+      "true_complexity": "complex",
+      "rationale": "Short question with high stakes; needs careful structural financial-fraud reasoning, not a quick guess."
+    },
+    {
+      "id": "cx-015",
+      "category": "complexity_mislabeled",
+      "query": "What's the safest way to jack up my car?",
+      "true_complexity": "complex",
+      "rationale": "Sounds like a quick how-to but is safety-critical and needs precise, correct multi-step guidance."
+    },
+    {
+      "id": "cx-016",
+      "category": "complexity_mislabeled",
+      "query": "Why is my toddler refusing to eat anything?",
+      "true_complexity": "complex",
+      "rationale": "Short parenting question, but genuinely requires nuanced reasoning across many behavioral and medical possibilities."
+    },
+    {
+      "id": "cx-017",
+      "category": "complexity_mislabeled",
+      "query": "Is this email a phishing attempt?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but needs careful multi-signal security reasoning (sender, links, urgency cues) to answer well."
+    },
+    {
+      "id": "cx-018",
+      "category": "complexity_mislabeled",
+      "query": "Why does this cryptographic protocol leak information?",
+      "true_complexity": "complex",
+      "rationale": "Short prompt, but requires deep security analysis of the protocol's steps."
+    },
+    {
+      "id": "cx-019",
+      "category": "complexity_mislabeled",
+      "query": "What's the fastest sorting algorithm for this dataset?",
+      "true_complexity": "complex",
+      "rationale": "Sounds like a simple lookup but the right answer depends on reasoning about data size, distribution, and memory constraints."
+    },
+    {
+      "id": "cx-020",
+      "category": "complexity_mislabeled",
+      "query": "Why does my thermostat keep short-cycling?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but needs multi-cause HVAC diagnostic reasoning."
+    },
+    {
+      "id": "cx-021",
+      "category": "complexity_mislabeled",
+      "query": "Is my will legally valid?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but validity depends on jurisdiction-specific requirements that need careful checking."
+    },
+    {
+      "id": "cx-022",
+      "category": "complexity_mislabeled",
+      "query": "Why is my baby crying nonstop?",
+      "true_complexity": "complex",
+      "rationale": "Short parenting question, but requires broad differential reasoning across many causes."
+    },
+    {
+      "id": "cx-023",
+      "category": "complexity_mislabeled",
+      "query": "Can I be fired for this?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but needs nuanced employment-law reasoning about at-will limits and protected activity."
+    },
+    {
+      "id": "cx-024",
+      "category": "complexity_mislabeled",
+      "query": "Why did the stock market crash today?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but requires synthesizing multiple economic and geopolitical causes."
+    },
+    {
+      "id": "cx-025",
+      "category": "complexity_mislabeled",
+      "query": "Is this mushroom safe to eat?",
+      "true_complexity": "complex",
+      "rationale": "Extremely short, but a wrong answer can be fatal -- needs careful, rigorous identification reasoning."
+    },
+    {
+      "id": "cx-026",
+      "category": "complexity_mislabeled",
+      "query": "Why is my Wi-Fi router overheating?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but needs multi-cause electrical and networking diagnostic reasoning."
+    },
+    {
+      "id": "cx-027",
+      "category": "complexity_mislabeled",
+      "query": "What does this chest pain mean?",
+      "true_complexity": "complex",
+      "rationale": "Short and urgent, but potentially life-threatening -- needs careful differential-diagnosis-style reasoning."
+    },
+    {
+      "id": "cx-028",
+      "category": "complexity_mislabeled",
+      "query": "Is this NDA one-sided?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but requires careful clause-by-clause legal reasoning to answer correctly."
+    },
+    {
+      "id": "cx-029",
+      "category": "complexity_mislabeled",
+      "query": "Why does my model overfit on this dataset?",
+      "true_complexity": "complex",
+      "rationale": "Short ML question, but has many possible causes (leakage, capacity, regularization) needing careful reasoning."
+    },
+    {
+      "id": "cx-030",
+      "category": "complexity_mislabeled",
+      "query": "Should I take the settlement offer?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but requires weighing legal, financial, and probabilistic litigation-outcome factors together."
+    },
+    {
+      "id": "cx-031",
+      "category": "complexity_mislabeled",
+      "query": "Why does adding this index make my query slower?",
+      "true_complexity": "complex",
+      "rationale": "Short and counterintuitive; needs deep database-internals reasoning to explain correctly."
+    },
+    {
+      "id": "cx-032",
+      "category": "complexity_mislabeled",
+      "query": "Is it safe to give my dog human painkillers?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but the correct answer requires precise veterinary pharmacology knowledge -- most human painkillers are toxic to dogs."
+    },
+    {
+      "id": "cx-033",
+      "category": "complexity_mislabeled",
+      "query": "Why is my startup's churn rate increasing?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but needs multi-factor product and business-analytics reasoning."
+    },
+    {
+      "id": "cx-034",
+      "category": "complexity_mislabeled",
+      "query": "What's causing this race condition?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but needs careful concurrency reasoning across the whole system's execution paths."
+    },
+    {
+      "id": "cx-035",
+      "category": "complexity_mislabeled",
+      "query": "Is this a good time to exercise my stock options?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but needs combined tax, timing, and valuation reasoning."
+    },
+    {
+      "id": "cx-036",
+      "category": "complexity_mislabeled",
+      "query": "Why does my chemical reaction produce a different color than expected?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but needs careful reasoning about reaction mechanism and possible side reactions."
+    },
+    {
+      "id": "cx-037",
+      "category": "complexity_mislabeled",
+      "query": "Can I break this lease early without penalty?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but depends on jurisdiction- and contract-specific legal reasoning."
+    },
+    {
+      "id": "cx-038",
+      "category": "complexity_mislabeled",
+      "query": "Why is my retirement account losing money?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but needs reasoning about market conditions, asset allocation, and fees together."
+    },
+    {
+      "id": "cx-039",
+      "category": "complexity_mislabeled",
+      "query": "Is this bridge design structurally sound?",
+      "true_complexity": "complex",
+      "rationale": "Short prompt, but requires deep structural-engineering load and material reasoning."
+    },
+    {
+      "id": "cx-040",
+      "category": "complexity_mislabeled",
+      "query": "Why is my 3D print warping at the corners?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but has multiple interacting causes (bed adhesion, cooling, material) needing careful reasoning."
+    },
+    {
+      "id": "cx-041",
+      "category": "complexity_mislabeled",
+      "query": "Should I disclose this pre-existing condition?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but needs nuanced insurance and legal-disclosure reasoning."
+    },
+    {
+      "id": "cx-042",
+      "category": "complexity_mislabeled",
+      "query": "Why did the compiler optimize this loop away?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but needs deep reasoning about compiler optimization rules and undefined behavior."
+    },
+    {
+      "id": "cx-043",
+      "category": "complexity_mislabeled",
+      "query": "Is my kid's fever dangerous?",
+      "true_complexity": "complex",
+      "rationale": "Short and urgent-sounding, but requires careful pediatric triage reasoning based on age and other symptoms."
+    },
+    {
+      "id": "cx-044",
+      "category": "complexity_mislabeled",
+      "query": "Why is this smart contract vulnerable?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but needs deep security and blockchain-specific reasoning to identify the flaw."
+    },
+    {
+      "id": "cx-045",
+      "category": "complexity_mislabeled",
+      "query": "Should I take this plea deal?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but requires nuanced legal-strategy reasoning weighing risk and evidence."
+    },
+    {
+      "id": "cx-046",
+      "category": "complexity_mislabeled",
+      "query": "Why does this algorithm fail on large inputs but not small ones?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but needs careful complexity and edge-case reasoning to diagnose."
+    },
+    {
+      "id": "cx-047",
+      "category": "complexity_mislabeled",
+      "query": "Is it safe to defrost this chicken on the counter overnight?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but the correct answer relies on precise food-safety reasoning about bacterial growth rates."
+    },
+    {
+      "id": "cx-048",
+      "category": "complexity_mislabeled",
+      "query": "Why is my company's valuation dropping despite growing revenue?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but needs multi-factor financial and market reasoning (margins, growth expectations, comparables)."
+    },
+    {
+      "id": "cx-049",
+      "category": "complexity_mislabeled",
+      "query": "Why won't my parachute release cleanly in this rigging setup?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but is safety-critical and needs precise, correct mechanical reasoning."
+    },
+    {
+      "id": "cx-050",
+      "category": "complexity_mislabeled",
+      "query": "Is this endorsement enough to make my insurance policy void?",
+      "true_complexity": "complex",
+      "rationale": "Short question, but requires careful clause-level insurance-contract reasoning."
+    }
+  ]
+}
