@@ -1,16 +1,22 @@
-"""Test-only fake embedders. Not part of the shipped package.
+"""Test-only fakes. Not part of the shipped package.
 
-Two flavors:
+Embedders:
 - FakeEmbedder: deterministic, hash-derived vectors -- good for
   mechanics tests (put/lookup wiring, TTL) where the exact similarity
   value doesn't matter, only that it's a valid, reproducible embedder.
 - ScriptedEmbedder: hand-registered vectors per exact text -- good for
   tests that need to pin an exact cosine similarity between two prompts.
+
+LLM client:
+- FakeChatCompletionClient: scripted single-response ChatCompletionClient
+  for testing prompt-building/response-parsing without a real model call.
 """
 
 from __future__ import annotations
 
 import numpy as np
+
+from verified_cost_router.llm.groq_client import ChatCompletionResult, ChatMessage
 
 
 class FakeEmbedder:
@@ -57,3 +63,31 @@ def unit_vectors_with_similarity(similarity: float) -> tuple[np.ndarray, np.ndar
     a = np.array([1.0, 0.0], dtype=np.float32)
     b = np.array([similarity, np.sqrt(max(0.0, 1.0 - similarity**2))], dtype=np.float32)
     return a, b
+
+
+class FakeChatCompletionClient:
+    """Scripted ChatCompletionClient: always returns `next_content`, and
+    records the arguments of the most recent call for assertions."""
+
+    def __init__(self, next_content: str) -> None:
+        self.next_content = next_content
+        self.last_model: str | None = None
+        self.last_messages: list[ChatMessage] | None = None
+        self.last_temperature: float | None = None
+        self.last_max_tokens: int | None = None
+
+    def chat_completion(
+        self,
+        model: str,
+        messages,
+        *,
+        temperature: float = 0.0,
+        max_tokens: int | None = None,
+    ) -> ChatCompletionResult:
+        self.last_model = model
+        self.last_messages = list(messages)
+        self.last_temperature = temperature
+        self.last_max_tokens = max_tokens
+        return ChatCompletionResult(
+            content=self.next_content, model=model, prompt_tokens=0, completion_tokens=0
+        )
