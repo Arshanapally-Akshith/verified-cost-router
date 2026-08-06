@@ -1,0 +1,20 @@
+[project]
+name = "verified-cost-router"
+version = "0.1.0"
+description = "Verified Cost Router: semantic cache + complexity routing + verification gate for LLM API calls."
+requires-python = ">=3.11"
+dependencies = [
+    "langgraph>=1.2,<2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
