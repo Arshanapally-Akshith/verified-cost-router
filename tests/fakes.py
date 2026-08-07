@@ -14,7 +14,12 @@ LLM client:
 Pipeline-node doubles (verified_cost_router.pipeline.nodes.PipelineNodes
 takes these as separate objects, so each can be configured independently
 without needing to script a shared client across multiple call sites):
-- FakeClassifier, FakeVerifier
+- FakeClassifier, FakeVerifier: same verdict for every query -- fine
+  when a test only exercises one query at a time.
+- ScriptedClassifier, ScriptedVerifier: per-query-text verdicts via a
+  lookup dict -- needed by eval-module tests, which classify/verify a
+  whole batch of *different* queries in one run and need each to behave
+  differently (e.g. some correctly routed, some not).
 """
 
 from __future__ import annotations
@@ -144,3 +149,48 @@ class FakeVerifier:
         return VerificationOutcome(
             label=self.output_label, model=self.model, prompt_tokens=8, completion_tokens=1
         )
+
+
+class ScriptedClassifier:
+    """Fake ComplexityClassifier returning a per-query-text label from `labels`."""
+
+    def __init__(self, labels: dict[str, ComplexityLabel], default: ComplexityLabel = "simple", model: str = "fake-cheap-model") -> None:
+        self._labels = labels
+        self._default = default
+        self.model = model
+        self.calls: list[str] = []
+
+    def classify_with_usage(self, query: str) -> ClassificationResult:
+        self.calls.append(query)
+        label = self._labels.get(query, self._default)
+        return ClassificationResult(label=label, model=self.model, prompt_tokens=6, completion_tokens=1)
+
+
+class ScriptedVerifier:
+    """Fake Verifier returning per-call verdicts from lookup dicts, keyed
+    by the exact arguments the real Verifier would see (not by any
+    ground-truth label the real verifier wouldn't have access to)."""
+
+    def __init__(
+        self,
+        cache_hit_labels: dict[tuple[str, str], VerifierLabel] | None = None,
+        output_labels: dict[str, VerifierLabel] | None = None,
+        default: VerifierLabel = "pass",
+        model: str = "fake-cheap-model",
+    ) -> None:
+        self._cache_hit_labels = cache_hit_labels or {}
+        self._output_labels = output_labels or {}
+        self._default = default
+        self.model = model
+        self.cache_hit_calls: list[tuple[str, str, str]] = []
+        self.output_calls: list[tuple[str, str]] = []
+
+    def verify_cache_hit(self, query: str, cached_query: str, cached_response: str) -> VerificationOutcome:
+        self.cache_hit_calls.append((query, cached_query, cached_response))
+        label = self._cache_hit_labels.get((query, cached_query), self._default)
+        return VerificationOutcome(label=label, model=self.model, prompt_tokens=8, completion_tokens=1)
+
+    def verify_output(self, query: str, output: str) -> VerificationOutcome:
+        self.output_calls.append((query, output))
+        label = self._output_labels.get(query, self._default)
+        return VerificationOutcome(label=label, model=self.model, prompt_tokens=8, completion_tokens=1)

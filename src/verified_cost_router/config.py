@@ -27,6 +27,13 @@ class GroqSettings:
     cheap_model: str
     strong_model: str
 
+    def __repr__(self) -> str:
+        # Redacted so the key can't leak into logs, tracebacks, or test
+        # failure output (e.g. pytest printing fixture locals) -- both
+        # already happened once during Phase 5 development.
+        masked = f"{self.api_key[:5]}...{self.api_key[-4:]}" if len(self.api_key) > 9 else "***"
+        return f"GroqSettings(api_key={masked!r}, cheap_model={self.cheap_model!r}, strong_model={self.strong_model!r})"
+
 
 def load_groq_settings() -> GroqSettings:
     """Load Groq settings from the environment (.env is loaded first if present).
