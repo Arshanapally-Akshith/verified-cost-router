@@ -41,6 +41,7 @@ def test_run_no_system_always_uses_strong_model():
     assert result.served_from_cache is False
     assert groq_client.last_model == STRONG_MODEL
     assert result.cost_usd > 0
+    assert result.path_taken == "no_system"
 
 
 # --- run_cache_router_no_verifier ----------------------------------------------
@@ -61,6 +62,7 @@ def test_high_confidence_cache_hit_is_served_free_with_no_llm_calls():
     assert result.llm_call_count == 0
     assert result.cost_usd == 0.0
     assert groq_client.call_count == 0
+    assert result.path_taken == "cache_hit"
 
 
 def test_risky_hit_is_not_served_falls_through_to_router():
@@ -81,6 +83,7 @@ def test_risky_hit_is_not_served_falls_through_to_router():
     assert result.response == "fresh answer"
     assert result.served_from_cache is False
     assert groq_client.call_count == 1
+    assert result.path_taken == "router_cheap"
 
 
 def test_cache_miss_simple_uses_cheap_model_and_writes_cache():
@@ -105,6 +108,7 @@ def test_cache_miss_complex_uses_strong_model():
 
     assert result.response == "strong answer"
     assert groq_client.last_model == STRONG_MODEL
+    assert result.path_taken == "router_strong"
 
 
 # --- run_full_system -----------------------------------------------------------
@@ -129,6 +133,7 @@ def test_run_full_system_reuses_the_real_pipeline():
     assert result.served_from_cache is False
     assert result.llm_call_count == 3  # classify + generate_cheap + verify_output
     assert result.cost_usd > 0
+    assert result.path_taken == "router-8B"
 
 
 def test_run_full_system_marks_cache_hit_as_served_from_cache():
@@ -153,3 +158,4 @@ def test_run_full_system_marks_cache_hit_as_served_from_cache():
     assert result.response == "cached answer"
     assert result.served_from_cache is True
     assert result.llm_call_count == 0
+    assert result.path_taken == "cache-hit"

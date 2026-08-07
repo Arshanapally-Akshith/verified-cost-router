@@ -42,12 +42,18 @@ from verified_cost_router.state import LlmCallUsage
 @dataclass(frozen=True)
 class BaselineResult:
     """One query's outcome under one baseline: enough to compare cost
-    across baselines and to feed the quality spot check.
+    across baselines, feed the quality spot check, and (Phase 6) chart
+    path distribution / cache-hit-rate-over-time on the dashboard.
 
     `used_strong_model` marks responses that already came from the
     strong model -- the quality spot check (ARCHITECTURE.md 4.6)
     excludes these, since comparing a strong-model answer against a
     fresh strong-model reference isn't an informative quality check.
+
+    `path_taken` is baseline-specific: "no_system" for baseline 1;
+    "cache_hit" / "router_cheap" / "router_strong" for baseline 2 (it
+    has no verifier, so no escalation path exists); the real 5-way
+    ARCHITECTURE.md taxonomy (e.g. "router-8B-escalated") for baseline 3.
     """
 
     query: str
@@ -56,6 +62,7 @@ class BaselineResult:
     llm_call_count: int
     served_from_cache: bool
     used_strong_model: bool
+    path_taken: str
 
 
 def run_no_system(
@@ -71,6 +78,7 @@ def run_no_system(
         llm_call_count=1,
         served_from_cache=False,
         used_strong_model=True,
+        path_taken="no_system",
     )
 
 
@@ -96,6 +104,7 @@ def run_cache_router_no_verifier(
             llm_call_count=0,
             served_from_cache=True,
             used_strong_model=False,
+            path_taken="cache_hit",
         )
 
     calls: list[LlmCallUsage] = []
@@ -118,6 +127,7 @@ def run_cache_router_no_verifier(
         llm_call_count=len(calls),
         served_from_cache=False,
         used_strong_model=is_complex,
+        path_taken="router_strong" if is_complex else "router_cheap",
     )
 
 
@@ -135,4 +145,5 @@ def run_full_system(query: str, app: CompiledStateGraph, pricing: Mapping[str, M
         # router-8B-escalated's *served* content is the escalated
         # generate_strong call's output, not the discarded cheap draft.
         used_strong_model=(path_taken in ("router-70B", "router-8B-escalated")),
+        path_taken=path_taken,
     )

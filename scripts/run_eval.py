@@ -36,7 +36,13 @@ from verified_cost_router.data_prep.adversarial_eval import load_adversarial_eva
 from verified_cost_router.eval.baselines import run_cache_router_no_verifier, run_full_system, run_no_system
 from verified_cost_router.eval.cache_eval import evaluate_cache_pairs
 from verified_cost_router.eval.quality_eval import JudgeError, spot_check_quality
-from verified_cost_router.eval.report import EvalReport, summarize_baseline
+from verified_cost_router.eval.report import (
+    CACHE_ROUTER_NO_VERIFIER,
+    FULL_SYSTEM,
+    NO_SYSTEM,
+    EvalReport,
+    summarize_baseline,
+)
 from verified_cost_router.eval.router_eval import evaluate_complexity_items
 from verified_cost_router.eval.verifier_eval import evaluate_cache_verifier, evaluate_route_verifier
 from verified_cost_router.graph import build_pipeline_graph
@@ -69,10 +75,17 @@ _T = TypeVar("_T")
 
 def _run_over_queries(label: str, run_one: Callable[[str], _T], queries: list[str]) -> list[_T]:
     """Run `run_one(query)` for each query, skipping (and logging) any that
-    raise one of `_SKIPPABLE_ERRORS` instead of aborting the whole batch."""
+    raise one of `_SKIPPABLE_ERRORS` instead of aborting the whole batch.
+
+    Logs progress every 5 queries -- each query is a real, potentially
+    slow API call, and a long silent gap is otherwise indistinguishable
+    from a genuine hang.
+    """
     results: list[_T] = []
     skipped = 0
-    for query in queries:
+    for i, query in enumerate(queries, start=1):
+        if i == 1 or i % 5 == 0:
+            logger.info("%s: query %d/%d", label, i, len(queries))
         try:
             results.append(run_one(query))
         except _SKIPPABLE_ERRORS as exc:
@@ -182,12 +195,12 @@ def main() -> None:
         "full_system", partial(run_full_system, app=full_system_app, pricing=DEFAULT_PRICING), replay_queries
     )
 
-    baseline_summaries = (
-        summarize_baseline("no_system", no_system_results),
-        summarize_baseline("cache_router_no_verifier", cache_router_results),
-        summarize_baseline("full_system", full_system_results),
-    )
-    for summary in baseline_summaries:
+    baseline_raw_results = {
+        NO_SYSTEM: tuple(no_system_results),
+        CACHE_ROUTER_NO_VERIFIER: tuple(cache_router_results),
+        FULL_SYSTEM: tuple(full_system_results),
+    }
+    for summary in (summarize_baseline(name, results) for name, results in baseline_raw_results.items()):
         logger.info(
             "      %s: mean_cost_usd=%.6f cache_hit_rate=%.1f%%",
             summary.name,
@@ -215,7 +228,7 @@ def main() -> None:
         router_eval=router_eval,
         cache_verifier_eval=cache_verifier_eval,
         route_verifier_eval=route_verifier_eval,
-        baseline_summaries=baseline_summaries,
+        baseline_raw_results=baseline_raw_results,
         quality_spot_check=quality_spot_check,
     )
     report.write(args.report_json, args.report_md)

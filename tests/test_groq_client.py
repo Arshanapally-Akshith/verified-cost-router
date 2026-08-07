@@ -7,7 +7,10 @@ calls and no real waiting.
 
 from __future__ import annotations
 
+import time
+
 import pytest
+import requests
 
 from verified_cost_router.llm.groq_client import (
     ChatMessage,
@@ -140,6 +143,36 @@ def test_exponential_backoff_without_retry_after_header():
     assert sleeps == [1.0, 2.0]  # 1 * 2**0, 1 * 2**1
 
 
+def test_large_retry_after_is_capped_not_slept_verbatim():
+    """Regression test for the run_eval.py hang (Phase 6): near a daily
+    token-quota cap, Groq's Retry-After scales with how many tokens a
+    request is short by and can be minutes long. Sleeping that verbatim
+    turned a routine 429 into a silent, multi-minute block -- this caps
+    it so a single retry never blocks longer than max_retry_delay_seconds.
+    """
+    session = _ScriptedSession(
+        [_FakeResponse(429, headers={"Retry-After": "600"}), _success_response()]
+    )
+    sleeps: list[float] = []
+    client = _make_client(session, sleeps=sleeps, max_retry_delay_seconds=30.0)
+
+    client.chat_completion("m", [ChatMessage(role="user", content="hi")])
+
+    assert sleeps == [30.0]
+
+
+def test_retry_logs_a_warning_instead_of_sleeping_silently(caplog):
+    session = _ScriptedSession(
+        [_FakeResponse(429, headers={"Retry-After": "7"}), _success_response()]
+    )
+    client = _make_client(session, sleeps=[])
+
+    with caplog.at_level("WARNING"):
+        client.chat_completion("m", [ChatMessage(role="user", content="hi")])
+
+    assert any("rate limited" in record.message for record in caplog.records)
+
+
 def test_non_429_error_status_raises_groq_api_error():
     session = _ScriptedSession([_FakeResponse(500, text="internal error")])
     client = _make_client(session)
@@ -154,3 +187,71 @@ def test_malformed_success_response_raises_groq_api_error():
 
     with pytest.raises(GroqAPIError, match="unexpected Groq response shape"):
         client.chat_completion("m", [ChatMessage(role="user", content="hi")])
+
+
+# --- Watchdog / request-level failure handling --------------------------------
+#
+# These cover the Phase 6 fix for a reproducible hang in scripts/run_eval.py:
+# a request whose underlying socket call never returns (a known
+# requests/urllib3 failure class on long-lived, heavily reused Sessions --
+# see GroqClient's class docstring) used to hang chat_completion forever.
+
+
+class _HangingSession:
+    """Fake session whose post() blocks far longer than any test's configured timeout."""
+
+    def post(self, url, json, headers, timeout):
+        time.sleep(5)
+        return _FakeResponse(200)  # never actually reached within the test
+
+
+class _RaisingSession:
+    def __init__(self, exc: BaseException):
+        self._exc = exc
+
+    def post(self, url, json, headers, timeout):
+        raise self._exc
+
+
+def test_watchdog_raises_groq_api_error_when_post_never_returns():
+    client = GroqClient(
+        api_key="test-key",
+        session=_HangingSession(),
+        sleep=lambda seconds: None,
+        timeout=0.05,
+        watchdog_grace_seconds=0.05,
+    )
+
+    start = time.monotonic()
+    with pytest.raises(GroqAPIError, match="watchdog timeout"):
+        client.chat_completion("m", [ChatMessage(role="user", content="hi")])
+    elapsed = time.monotonic() - start
+
+    assert elapsed < 2.0  # bounded by timeout+grace (0.1s), not the fake's 5s hang
+
+
+def test_connection_error_is_wrapped_as_groq_api_error():
+    session = _RaisingSession(requests.exceptions.ConnectionError("connection reset by peer"))
+    client = _make_client(session)
+
+    with pytest.raises(GroqAPIError, match="request failed"):
+        client.chat_completion("m", [ChatMessage(role="user", content="hi")])
+
+
+def test_read_timeout_is_wrapped_as_groq_api_error():
+    session = _RaisingSession(requests.exceptions.ReadTimeout("read timed out"))
+    client = _make_client(session)
+
+    with pytest.raises(GroqAPIError, match="request failed"):
+        client.chat_completion("m", [ChatMessage(role="user", content="hi")])
+
+
+def test_fast_response_is_unaffected_by_a_tight_watchdog():
+    session = _ScriptedSession([_success_response("ok")])
+    client = GroqClient(
+        api_key="test-key", session=session, sleep=lambda seconds: None, timeout=0.5, watchdog_grace_seconds=0.5
+    )
+
+    result = client.chat_completion("m", [ChatMessage(role="user", content="hi")])
+
+    assert result.content == "ok"
