@@ -58,7 +58,17 @@ cherry-picked.
 | 🛡️ | Verifier catch rate — bad cache hit | **100.0%** near-miss |
 | 🛡️ | Verifier catch rate — bad route | 0.0% *(n=1, too small to generalize — reported as-is)* |
 | ✅ | Quality-regression spot check | **100%** comparable to strong model *(n=3, small sample)* |
-| 💰 | Full-system cost vs. no-system baseline | **-0.6%** on natural replay traffic |
+| 💰 | Full-system cost vs. no-system baseline | **-0.6%** on natural replay traffic *(0% cache hit rate — see caveat below)* |
+| ⚡ | Cache-reuse savings, synthetic repeat-traffic benchmark | **62.2%** cost savings, **50%** cache hit rate *(10/50 true-duplicate pairs, 20%, seed 42 — see below)* |
+
+These last two rows measure different things and shouldn't be
+conflated: the -0.6% figure is on **natural** replay traffic that
+happened to contain zero semantic duplicates, so it isolates
+router/verifier efficiency with caching contributing nothing. The
+62.2%/50% figures are from a **separate, deliberately synthetic**
+benchmark built specifically to contain repeat traffic, isolating what
+the cache contributes when it actually gets hit. Full methodology,
+sampling details, and the source numbers: [`data/eval_report.md`](data/eval_report.md).
 
 The honest headline: cache precision tops out at **~60%** because
 true-duplicate and near-miss queries genuinely overlap in embedding
