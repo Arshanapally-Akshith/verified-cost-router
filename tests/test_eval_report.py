@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from pathlib import Path
 
 from verified_cost_router.eval.baselines import BaselineResult
@@ -17,7 +18,7 @@ from verified_cost_router.eval.verifier_eval import (
 )
 
 
-def _sample_report() -> EvalReport:
+def _sample_report(cache_reuse_raw_results: dict | None = None) -> EvalReport:
     cache_eval = CacheEvalResult(
         outcomes=(
             CachePairOutcome("dup1", "true_duplicate", True, True, "high_confidence_hit"),
@@ -48,6 +49,7 @@ def _sample_report() -> EvalReport:
         route_verifier_eval=route_verifier_eval,
         baseline_raw_results=baseline_raw_results,
         quality_spot_check=quality,
+        cache_reuse_raw_results=cache_reuse_raw_results or {},
     )
 
 
@@ -137,3 +139,123 @@ def test_load_eval_report_round_trips_write(tmp_path: Path):
     assert loaded.cache_eval.precision == original.cache_eval.precision
     assert loaded.baseline_summaries == original.baseline_summaries
     assert loaded.to_markdown() == original.to_markdown()
+
+
+def test_load_eval_report_reads_pre_phase6_schema_without_raising(tmp_path: Path):
+    """Regression test: a report written before Phase 6 has aggregate
+    `baseline_summaries` instead of per-query `baseline_raw_results`.
+    load_eval_report must not KeyError on it -- the dashboard needs to
+    keep working against reports that predate per-query tracking."""
+    original = _sample_report()
+    raw = json.loads(original.to_json())
+    del raw["baseline_raw_results"]
+    raw["baseline_summaries"] = [asdict(s) for s in original.baseline_summaries]
+    json_path = tmp_path / "legacy_report.json"
+    json_path.write_text(json.dumps(raw), encoding="utf-8")
+
+    loaded = load_eval_report(json_path)
+
+    # No per-query data exists in this schema -- must come back empty, not fabricated.
+    assert loaded.baseline_raw_results == {}
+    # But the real aggregate numbers the old report already computed are preserved.
+    assert loaded.baseline_summaries == original.baseline_summaries
+    # Every other section is unaffected by the legacy baseline schema.
+    assert loaded.cache_eval == original.cache_eval
+    assert loaded.router_eval == original.router_eval
+    assert loaded.quality_spot_check == original.quality_spot_check
+
+
+def test_cache_reuse_raw_results_defaults_to_empty_and_stays_out_of_baselines():
+    """Reports without a cache-reuse benchmark (every report before this
+    feature existed) must keep working unchanged -- default empty, and
+    never merged into baseline_raw_results / baseline_summaries."""
+    report = _sample_report()
+
+    assert report.cache_reuse_raw_results == {}
+    assert report.cache_reuse_summaries["no_system"].query_count == 0
+    assert report.cache_reuse_summaries["full_system"].query_count == 0
+    assert report.cache_reuse_savings_pct == 0.0
+    assert {s.name for s in report.baseline_summaries} == {"no_system", "cache_router_no_verifier", "full_system"}
+
+
+def _reuse_results():
+    return {
+        "no_system": (
+            BaselineResult("qa", "a", 0.004, 1, False, True, "no_system"),
+            BaselineResult("qb", "a", 0.004, 1, False, True, "no_system"),
+        ),
+        "full_system": (
+            BaselineResult("qa", "a", 0.002, 2, False, False, "router-8B"),
+            BaselineResult("qb", "a", 0.0, 0, True, False, "cache-hit"),
+        ),
+    }
+
+
+def test_cache_reuse_summaries_computed_per_system():
+    report = _sample_report(cache_reuse_raw_results=_reuse_results())
+
+    summaries = report.cache_reuse_summaries
+
+    assert summaries["no_system"].query_count == 2
+    assert summaries["no_system"].mean_cost_usd == 0.004
+    assert summaries["full_system"].query_count == 2
+    assert summaries["full_system"].cache_hit_rate == 0.5
+    assert summaries["full_system"].mean_cost_usd == 0.001
+
+
+def test_cache_reuse_savings_pct_matches_no_system_vs_full_system():
+    report = _sample_report(cache_reuse_raw_results=_reuse_results())
+
+    # no_system mean = 0.004, full_system mean = 0.001 -> 75% cheaper.
+    assert report.cache_reuse_savings_pct == (0.004 - 0.001) / 0.004
+
+
+def test_cache_reuse_savings_pct_is_zero_when_no_system_has_no_cost():
+    report = _sample_report()  # empty cache_reuse_raw_results -> no_system mean cost is 0
+    assert report.cache_reuse_savings_pct == 0.0
+
+
+def test_to_json_round_trips_cache_reuse_raw_results():
+    report = _sample_report(cache_reuse_raw_results=_reuse_results())
+
+    parsed = json.loads(report.to_json())
+
+    assert set(parsed["cache_reuse_raw_results"].keys()) == {"no_system", "full_system"}
+    assert parsed["cache_reuse_raw_results"]["no_system"][0]["query"] == "qa"
+
+
+def test_load_eval_report_round_trips_cache_reuse_raw_results(tmp_path: Path):
+    original = _sample_report(cache_reuse_raw_results=_reuse_results())
+    json_path = tmp_path / "report.json"
+    md_path = tmp_path / "report.md"
+    original.write(json_path, md_path)
+
+    loaded = load_eval_report(json_path)
+
+    assert loaded.cache_reuse_raw_results == original.cache_reuse_raw_results
+    assert loaded.cache_reuse_summaries == original.cache_reuse_summaries
+    assert loaded.cache_reuse_savings_pct == original.cache_reuse_savings_pct
+
+
+def test_load_eval_report_defaults_cache_reuse_raw_results_when_absent(tmp_path: Path):
+    """A report from before this feature existed has no cache_reuse_raw_results
+    key at all -- must load as empty, not raise."""
+    original = _sample_report()
+    raw = json.loads(original.to_json())
+    del raw["cache_reuse_raw_results"]
+    json_path = tmp_path / "report.json"
+    json_path.write_text(json.dumps(raw), encoding="utf-8")
+
+    loaded = load_eval_report(json_path)
+
+    assert loaded.cache_reuse_raw_results == {}
+
+
+def test_to_markdown_includes_cache_reuse_section_only_when_present():
+    without = _sample_report()
+    assert "Cache-reuse benchmark" not in without.to_markdown()
+
+    with_reuse = _sample_report(cache_reuse_raw_results=_reuse_results())
+    markdown = with_reuse.to_markdown()
+    assert "Cache-reuse benchmark" in markdown
+    assert "cache-reuse savings vs. no-system: 75.0%" in markdown

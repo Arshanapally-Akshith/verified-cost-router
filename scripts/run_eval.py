@@ -3,7 +3,8 @@ section 5: "Eval harness produces the precision/recall + cost numbers
 ... from a single script run").
 
 Usage:
-    python scripts/run_eval.py [--replay-sample-size 30] [--quality-sample-size 8] [--seed 42]
+    python scripts/run_eval.py [--replay-sample-size 30] [--quality-sample-size 8]
+                                [--cache-reuse-pairs 10] [--cache-reuse-only] [--seed 42]
 
 Requires GROQ_API_KEY and data/cache_thresholds.json (Phase 2). Reads
 data/adversarial_eval_set.json (Phase 1) and data/replay_sample.jsonl
@@ -17,36 +18,62 @@ per query per baseline across 3 baselines, and BUILD.md's own
 plus the free tier's 30 RPM cap make a full 5,000-query x 3-baseline
 run impractical (~15+ hours). Pass a larger --replay-sample-size for a
 more thorough run if you have the time and quota.
+
+--cache-reuse-pairs (default 10, 0 disables) runs a small, separate
+benchmark after the 3 baselines: seeded true_duplicate pairs from the
+same labeled adversarial eval set, each pair asked as 2 queries
+(original, then paraphrase) through both no_system and full_system --
+full_system gets its own fresh, isolated cache per pair, so no pair's
+cached answer can affect another pair's result -- giving a real
+cost-savings number for a workload that actually has cache reuse in it.
+See verified_cost_router.eval.cache_reuse_benchmark for why this exists.
+It never touches baseline_raw_results, so the 3-baseline natural-replay
+comparison above is unaffected by it.
+
+--cache-reuse-only skips the 6-step evaluation entirely (no cache/
+router/verifier evals, no 3-baseline replay -- none of the Groq calls
+those make) and only runs the cache-reuse benchmark above, against an
+*existing* report at --report-json: every other section of that report
+is carried over unchanged, and only cache_reuse_raw_results is replaced.
+Lets the benchmark be iterated on (different --cache-reuse-pairs, a
+code fix, etc.) without re-running the full evaluation each time. Fails
+fast if --report-json doesn't exist yet -- run once without this flag
+first.
 """
 
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
 import logging
 import random
+import sys
 from functools import partial
 from pathlib import Path
 from typing import Callable, TypeVar
 
-from verified_cost_router.cache.embeddings import SentenceTransformerEmbedder
+from verified_cost_router.cache.embeddings import EmbeddingModel, SentenceTransformerEmbedder
 from verified_cost_router.cache.semantic_cache import SemanticCache
-from verified_cost_router.config import load_groq_settings
-from verified_cost_router.data_prep.adversarial_eval import load_adversarial_eval_set
+from verified_cost_router.cache.thresholds import CacheThresholds
+from verified_cost_router.config import GroqSettings, load_groq_settings
+from verified_cost_router.data_prep.adversarial_eval import AdversarialEvalSet, load_adversarial_eval_set
 from verified_cost_router.eval.baselines import run_cache_router_no_verifier, run_full_system, run_no_system
 from verified_cost_router.eval.cache_eval import evaluate_cache_pairs
+from verified_cost_router.eval.cache_reuse_benchmark import run_cache_reuse_benchmark, select_cache_reuse_pairs
 from verified_cost_router.eval.quality_eval import JudgeError, spot_check_quality
 from verified_cost_router.eval.report import (
     CACHE_ROUTER_NO_VERIFIER,
     FULL_SYSTEM,
     NO_SYSTEM,
     EvalReport,
+    load_eval_report,
     summarize_baseline,
 )
 from verified_cost_router.eval.router_eval import evaluate_complexity_items
 from verified_cost_router.eval.verifier_eval import evaluate_cache_verifier, evaluate_route_verifier
 from verified_cost_router.graph import build_pipeline_graph
-from verified_cost_router.llm.groq_client import GroqAPIError, GroqClient, GroqRateLimitError
+from verified_cost_router.llm.groq_client import ChatCompletionClient, GroqAPIError, GroqClient, GroqRateLimitError
 from verified_cost_router.pipeline.dependencies import load_cache_thresholds
 from verified_cost_router.pipeline.nodes import PipelineNodes
 from verified_cost_router.pipeline.request_log import DEFAULT_PRICING
@@ -105,6 +132,21 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--replay-sample", type=Path, default=DEFAULT_REPLAY_SAMPLE)
     parser.add_argument("--replay-sample-size", type=int, default=30)
     parser.add_argument("--quality-sample-size", type=int, default=8)
+    parser.add_argument(
+        "--cache-reuse-pairs",
+        type=int,
+        default=10,
+        help="Seeded true_duplicate pairs (from the labeled adversarial eval set) for the "
+        "cache-reuse benchmark, each asked as 2 queries. 0 disables the benchmark.",
+    )
+    parser.add_argument(
+        "--cache-reuse-only",
+        action="store_true",
+        help="Skip the 6-step evaluation (no cache/router/verifier evals, no 3-baseline "
+        "replay) and only run the cache-reuse benchmark, merging its results into the "
+        "existing report at --report-json (every other section is carried over unchanged). "
+        "Requires that report to already exist and --cache-reuse-pairs > 0.",
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--report-json", type=Path, default=DEFAULT_REPORT_JSON)
     parser.add_argument("--report-md", type=Path, default=DEFAULT_REPORT_MD)
@@ -115,6 +157,101 @@ def load_replay_queries(path: Path, sample_size: int, rng: random.Random) -> lis
     with path.open(encoding="utf-8") as f:
         all_queries = [json.loads(line)["query"] for line in f]
     return rng.sample(all_queries, k=min(sample_size, len(all_queries)))
+
+
+def run_cache_reuse_step(
+    eval_set: AdversarialEvalSet,
+    n_pairs: int,
+    seed: int,
+    embedder: EmbeddingModel,
+    thresholds: CacheThresholds,
+    classifier: ComplexityClassifier,
+    verifier: Verifier,
+    groq_client: ChatCompletionClient,
+    groq_settings: GroqSettings,
+) -> dict[str, tuple]:
+    """Select `n_pairs` seeded true_duplicate pairs and run the cache-reuse
+    benchmark (see eval.cache_reuse_benchmark), returning results keyed
+    like baseline_raw_results (NO_SYSTEM / FULL_SYSTEM). Empty if
+    `n_pairs <= 0`. Shared by both the normal 6-step run and
+    --cache-reuse-only, so the benchmark behaves identically either way.
+    """
+    if n_pairs <= 0:
+        return {}
+
+    cache_reuse_pairs = select_cache_reuse_pairs(eval_set.cache_pairs, n_pairs, seed)
+    logger.info(
+        "cache-reuse benchmark: %d seeded true_duplicate pairs (%d queries each "
+        "through no_system and full_system; full_system gets its own fresh, isolated cache "
+        "per pair). Separate from the 3 baselines above -- never merged into them.",
+        len(cache_reuse_pairs),
+        len(cache_reuse_pairs) * 2,
+    )
+    cache_reuse_result = run_cache_reuse_benchmark(
+        cache_reuse_pairs,
+        embedder=embedder,
+        thresholds=thresholds,
+        classifier=classifier,
+        verifier=verifier,
+        groq_client=groq_client,
+        cheap_model=groq_settings.cheap_model,
+        strong_model=groq_settings.strong_model,
+        pricing=DEFAULT_PRICING,
+    )
+    cache_reuse_raw_results = {
+        NO_SYSTEM: cache_reuse_result.no_system_raw_results,
+        FULL_SYSTEM: cache_reuse_result.full_system_raw_results,
+    }
+    for summary in (summarize_baseline(name, results) for name, results in cache_reuse_raw_results.items()):
+        logger.info(
+            "      cache_reuse_benchmark/%s: mean_cost_usd=%.6f cache_hit_rate=%.1f%%",
+            summary.name,
+            summary.mean_cost_usd,
+            summary.cache_hit_rate * 100,
+        )
+    return cache_reuse_raw_results
+
+
+def run_cache_reuse_only(
+    args: argparse.Namespace,
+    eval_set: AdversarialEvalSet,
+    embedder: EmbeddingModel,
+    thresholds: CacheThresholds,
+    classifier: ComplexityClassifier,
+    verifier: Verifier,
+    groq_client: ChatCompletionClient,
+    groq_settings: GroqSettings,
+) -> None:
+    """--cache-reuse-only: run just the cache-reuse benchmark and merge its
+    results into the existing report at args.report_json -- every other
+    section (cache/router/verifier evals, the 3 natural-replay baselines)
+    is carried over from that file exactly as it was, so the benchmark
+    can be iterated on without re-running the full 6-step evaluation
+    (and its own Groq calls) each time.
+    """
+    if args.cache_reuse_pairs <= 0:
+        sys.exit("--cache-reuse-only requires --cache-reuse-pairs > 0 (got 0)")
+    if not args.report_json.exists():
+        sys.exit(
+            f"--cache-reuse-only requires an existing report at {args.report_json} "
+            "-- run without this flag first to produce one."
+        )
+
+    logger.info("--cache-reuse-only: loading existing report from %s", args.report_json)
+    existing_report = load_eval_report(args.report_json)
+
+    cache_reuse_raw_results = run_cache_reuse_step(
+        eval_set, args.cache_reuse_pairs, args.seed, embedder, thresholds, classifier, verifier,
+        groq_client, groq_settings,
+    )
+
+    updated_report = dataclasses.replace(existing_report, cache_reuse_raw_results=cache_reuse_raw_results)
+    updated_report.write(args.report_json, args.report_md)
+    logger.info(
+        "wrote %s and %s (cache-reuse benchmark only -- every other section unchanged)",
+        args.report_json,
+        args.report_md,
+    )
 
 
 def main() -> None:
@@ -131,6 +268,10 @@ def main() -> None:
     groq_client = GroqClient(api_key=groq_settings.api_key)
     classifier = ComplexityClassifier(groq_client, model=groq_settings.cheap_model)
     verifier = Verifier(groq_client, model=groq_settings.cheap_model)
+
+    if args.cache_reuse_only:
+        run_cache_reuse_only(args, eval_set, embedder, thresholds, classifier, verifier, groq_client, groq_settings)
+        return
 
     logger.info("[1/6] cache precision/recall against %d labeled pairs", len(eval_set.cache_pairs))
     cache_eval = evaluate_cache_pairs(eval_set.cache_pairs, embedder, thresholds)
@@ -222,6 +363,11 @@ def main() -> None:
         len(non_strong_served),
     )
 
+    cache_reuse_raw_results = run_cache_reuse_step(
+        eval_set, args.cache_reuse_pairs, args.seed, embedder, thresholds, classifier, verifier,
+        groq_client, groq_settings,
+    )
+
     logger.info("[6/6] writing report")
     report = EvalReport(
         cache_eval=cache_eval,
@@ -230,6 +376,7 @@ def main() -> None:
         route_verifier_eval=route_verifier_eval,
         baseline_raw_results=baseline_raw_results,
         quality_spot_check=quality_spot_check,
+        cache_reuse_raw_results=cache_reuse_raw_results,
     )
     report.write(args.report_json, args.report_md)
     logger.info("wrote %s and %s", args.report_json, args.report_md)

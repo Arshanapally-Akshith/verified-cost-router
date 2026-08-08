@@ -14,7 +14,7 @@ the two can never drift apart.
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Sequence
 
@@ -73,10 +73,48 @@ class EvalReport:
     # Keyed by BASELINE_NAMES (no_system / cache_router_no_verifier / full_system).
     baseline_raw_results: dict[str, tuple[BaselineResult, ...]]
     quality_spot_check: QualitySpotCheckResult
+    # Set only by load_eval_report() when reading a pre-Phase-6 report that
+    # has aggregate baseline_summaries but no per-query baseline_raw_results
+    # (the dashboard's real summary table still needs real numbers to show;
+    # see load_eval_report's docstring). None for every report produced by
+    # a live run -- baseline_summaries always derives from baseline_raw_results
+    # in that case, same as before this field existed.
+    stored_baseline_summaries: tuple[BaselineSummary, ...] | None = None
+    # Optional, separate from the 3 ARCHITECTURE.md section 6 baselines above:
+    # no_system vs full_system on a small, explicitly synthetic workload
+    # built from repeated/paraphrased queries (see eval.cache_reuse_benchmark),
+    # so a real cost-savings number can be computed for a workload that
+    # actually has cache reuse in it -- unlike the natural replay sample,
+    # which saw a 0% cache hit rate. Keyed like baseline_raw_results
+    # (NO_SYSTEM / FULL_SYSTEM) but stored in a separate dict, so it can
+    # never be merged into or mistaken for the natural-replay baselines.
+    # Empty for every report that predates this benchmark.
+    cache_reuse_raw_results: dict[str, tuple[BaselineResult, ...]] = field(default_factory=dict)
 
     @property
     def baseline_summaries(self) -> tuple[BaselineSummary, ...]:
+        if self.stored_baseline_summaries is not None:
+            return self.stored_baseline_summaries
         return tuple(summarize_baseline(name, self.baseline_raw_results.get(name, ())) for name in BASELINE_NAMES)
+
+    @property
+    def cache_reuse_summaries(self) -> dict[str, BaselineSummary]:
+        return {
+            name: summarize_baseline(name, self.cache_reuse_raw_results.get(name, ()))
+            for name in (NO_SYSTEM, FULL_SYSTEM)
+        }
+
+    @property
+    def cache_reuse_savings_pct(self) -> float:
+        """(no_system - full_system) / no_system mean cost, on the
+        cache-reuse benchmark's own workload -- the same computation
+        to_markdown() already does for the natural-replay baselines
+        above, just scoped to this separate comparison."""
+        summaries = self.cache_reuse_summaries
+        no_system, full_system = summaries[NO_SYSTEM], summaries[FULL_SYSTEM]
+        if not no_system.mean_cost_usd:
+            return 0.0
+        return (no_system.mean_cost_usd - full_system.mean_cost_usd) / no_system.mean_cost_usd
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), indent=2)
@@ -129,6 +167,23 @@ class EvalReport:
             f"- comparable-to-strong-model rate: {self.quality_spot_check.comparable_rate:.1%}",
             f"- responses spot-checked: {len(self.quality_spot_check.items)}\n",
         ]
+        if self.cache_reuse_raw_results:
+            reuse = self.cache_reuse_summaries
+            reuse_no_system, reuse_full_system = reuse[NO_SYSTEM], reuse[FULL_SYSTEM]
+            lines += [
+                "## Cache-reuse benchmark (synthetic, illustrative -- see eval.cache_reuse_benchmark)\n",
+                "Seeded true_duplicate pairs from the labeled adversarial eval set, each asked as two "
+                "queries (original, then paraphrase); full_system uses a fresh, isolated cache per pair "
+                "so no pair's cached answer can affect another pair's result.\n",
+                "| system | queries | mean cost/query (USD) | cache hit rate |",
+                "|---|---:|---:|---:|",
+                f"| no_system | {reuse_no_system.query_count} | {reuse_no_system.mean_cost_usd:.6f} | "
+                f"{reuse_no_system.cache_hit_rate:.1%} |",
+                f"| full_system | {reuse_full_system.query_count} | {reuse_full_system.mean_cost_usd:.6f} | "
+                f"{reuse_full_system.cache_hit_rate:.1%} |",
+                "",
+                f"- cache-reuse savings vs. no-system: {self.cache_reuse_savings_pct:.1%}\n",
+            ]
         return "\n".join(lines)
 
     def write(self, json_path: Path, markdown_path: Path) -> None:
@@ -144,6 +199,15 @@ def load_eval_report(path: Path) -> EvalReport:
     get the same computed properties (precision, recall, catch rates,
     baseline_summaries) as the process that originally produced the
     report, instead of re-deriving that logic separately.
+
+    Also reads pre-Phase-6 reports (`baseline_summaries`, no
+    `baseline_raw_results`) without raising: `baseline_raw_results` comes
+    back empty -- there's no per-query data in that schema to reconstruct,
+    so per-query views (cumulative cost/hit-rate, path distribution)
+    correctly render as "no data" rather than fabricating it -- but the
+    real aggregate numbers the old report already computed are preserved
+    via `stored_baseline_summaries` so the baseline comparison table still
+    shows actual figures instead of zeros.
     """
     raw = json.loads(path.read_text(encoding="utf-8"))
 
@@ -159,13 +223,27 @@ def load_eval_report(path: Path) -> EvalReport:
         misrouted=tuple(RouteVerifierOutcome(**o) for o in raw["route_verifier_eval"]["misrouted"]),
         correctly_routed_count=raw["route_verifier_eval"]["correctly_routed_count"],
     )
-    baseline_raw_results = {
-        name: tuple(BaselineResult(**r) for r in results)
-        for name, results in raw["baseline_raw_results"].items()
-    }
     quality_spot_check = QualitySpotCheckResult(
         items=tuple(QualitySpotCheckItem(**i) for i in raw["quality_spot_check"]["items"])
     )
+
+    if "baseline_raw_results" in raw:
+        baseline_raw_results = {
+            name: tuple(BaselineResult(**r) for r in results)
+            for name, results in raw["baseline_raw_results"].items()
+        }
+        stored_baseline_summaries = None
+    else:
+        baseline_raw_results = {}
+        summaries_by_name = {s["name"]: BaselineSummary(**s) for s in raw.get("baseline_summaries", [])}
+        stored_baseline_summaries = tuple(
+            summaries_by_name.get(name, summarize_baseline(name, ())) for name in BASELINE_NAMES
+        )
+
+    cache_reuse_raw_results = {
+        name: tuple(BaselineResult(**r) for r in results)
+        for name, results in raw.get("cache_reuse_raw_results", {}).items()
+    }
 
     return EvalReport(
         cache_eval=cache_eval,
@@ -174,4 +252,6 @@ def load_eval_report(path: Path) -> EvalReport:
         route_verifier_eval=route_verifier_eval,
         baseline_raw_results=baseline_raw_results,
         quality_spot_check=quality_spot_check,
+        stored_baseline_summaries=stored_baseline_summaries,
+        cache_reuse_raw_results=cache_reuse_raw_results,
     )

@@ -6,46 +6,34 @@
 
 [![Version](https://img.shields.io/badge/version-v1.0.0-blue)](https://github.com/Arshanapally-Akshith/verified-cost-router/releases/tag/v1.0.0)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white)](pyproject.toml)
-[![Tests](https://img.shields.io/badge/tests-229%20passing-brightgreen)](#testing)
+[![Tests](https://img.shields.io/badge/tests-254%20passing-brightgreen)](#testing)
 [![Orchestration](https://img.shields.io/badge/orchestration-LangGraph-1C3C3C)](https://github.com/langchain-ai/langgraph)
 [![Inference](https://img.shields.io/badge/inference-Groq-F55036?logo=groq&logoColor=white)](https://groq.com)
 [![Dashboard](https://img.shields.io/badge/dashboard-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](dashboard/app.py)
 
-[Results](#results-at-a-glance) · [Why this exists](#why-this-exists) · [Pipeline](#pipeline) · [Setup](#setup) · [Usage](#usage) · [Evaluation](#evaluation-results)
+[Problem](#the-problem) · [Results](#key-results) · [Architecture](#architecture--pipeline) · [Methodology & limitations](#evaluation-methodology--limitations) · [Dashboard](#dashboard--demo) · [Setup](#setup--usage)
 
 </div>
 
 ---
 
-Semantic caching (GPTCache) and complexity routing (RouteLLM) both cut LLM
-API costs — and both **trust their own decision without checking it**.
-This project measures that gap empirically, then closes it: a Verifier
-agent sanity-checks every risky cache hit and every cheap-model output
-before it reaches the user, and this README reports the precision/recall
-of that gate catching bad decisions — not just the claim that it does.
+## The problem
 
-## Results at a glance
+Semantic caching (GPTCache) and complexity routing (RouteLLM) are both
+established ways to cut LLM API costs — and both **trust their own
+decision without checking it**. GPTCache's own documentation
+acknowledges embedding similarity can match texts with opposite meaning
+but similar wording. RouteLLM's classifier can misroute a query that's
+worded simply but requires strong-model reasoning. Gateway products
+(Portkey-style) expose both as tunable thresholds, with no published,
+workload-specific evaluation methodology behind the knob.
 
-Measured against a 100-pair labeled adversarial set, 50 labeled
-complexity items, and 30 replayed real-world queries ([full report](data/eval_report.md)):
-
-| | Metric | Result |
-|---|---|---|
-| 🎯 | Cache precision / recall | **50.0% / 100.0%** |
-| 🧭 | Router complex-recall (adversarial) | **98.0%** (49/50) |
-| 🛡️ | Verifier catch rate — bad cache hit | **100.0%** near-miss |
-| 🛡️ | Verifier catch rate — bad route | 0.0% *(n=1, too small to generalize — reported as-is)* |
-| ✅ | Quality-regression spot check | **100%** comparable to strong model |
-| 💰 | Full-system cost vs. no-system baseline | **-0.6%**, verifier adds no measurable cost tax |
-
-The headline finding isn't a clean win — it's an honest one: cache
-precision tops out at **~60%** because true-duplicate and near-miss
-queries genuinely overlap in embedding space (see [Evaluation results](#evaluation-results)).
-That's the GPTCache failure mode this project set out to measure, and
-it's exactly why the Verifier exists instead of a single similarity
-threshold.
-
-## Why this exists
+**Verified Cost Router** treats both decisions as probabilistic and adds
+an explicit verification gate after each one: a Verifier agent
+sanity-checks every risky cache hit and every cheap-model output before
+it reaches the user. It then *measures*, not just claims, how often that
+gate catches a bad decision — the numbers below are from a real
+evaluation harness, not aspirational.
 
 | Tool | What it does | What it doesn't do |
 |---|---|---|
@@ -54,15 +42,32 @@ threshold.
 | **Portkey / gateways** | Config-driven caching + routing + observability behind one gateway | Tunable knobs, not a workload-specific evaluation methodology. No verification gate. |
 | **Verified Cost Router** | Cache + router, same as above | Adds an explicit verification gate on risky cache hits and cheap-model outputs, **and reports precision/recall of that gate catching bad decisions.** |
 
-GPTCache's own documentation acknowledges embedding similarity can match
-texts with opposite meaning but similar wording. RouteLLM's classifier
-can misroute a query that's worded simply but requires strong-model
-reasoning. Gateways expose both as tunable thresholds with no published,
-workload-specific evaluation methodology. This project treats both
-decisions as probabilistic, adds a cheap verification stage to catch
-their failure modes, and measures how often it actually works.
+## Key results
 
-## Pipeline
+Measured against a 100-pair labeled adversarial set, 50 labeled
+complexity items, and a 30-query replay of real ShareGPT traffic
+([full report](data/eval_report.md)). Every number below is read
+directly from that committed report — nothing here is rounded up or
+cherry-picked.
+
+| | Metric | Result |
+|---|---|---|
+| 🎯 | Cache precision / recall | **50.0% / 100.0%** |
+| 🧭 | Router complex-recall (adversarial) | **98.0%** (49/50) |
+| 🛡️ | Verifier catch rate — bad cache hit | **100.0%** near-miss |
+| 🛡️ | Verifier catch rate — bad route | 0.0% *(n=1, too small to generalize — reported as-is)* |
+| ✅ | Quality-regression spot check | **100%** comparable to strong model *(n=3, small sample)* |
+| 💰 | Full-system cost vs. no-system baseline | **-0.6%** on natural replay traffic |
+
+The honest headline: cache precision tops out at **~60%** because
+true-duplicate and near-miss queries genuinely overlap in embedding
+space under `all-MiniLM-L6-v2` — that's the GPTCache failure mode this
+project set out to measure, confirmed empirically, and exactly why the
+Verifier exists instead of a single similarity threshold. See
+[Evaluation methodology & limitations](#evaluation-methodology--limitations)
+for what the -0.6% figure does and doesn't show.
+
+## Architecture / Pipeline
 
 ```mermaid
 flowchart TD
@@ -93,8 +98,73 @@ flowchart TD
 | **Verifier** | `verifier/` | A Groq-8B agent used in two places: sanity-checking a risky cache hit against the new query, and sanity-checking a cheap-model output before it's served. A fail escalates to the router or the strong model respectively. |
 | **Generation** | `llm/` | Thin `requests` wrapper around Groq's OpenAI-compatible endpoint. Retry-with-backoff on 429s (capped, so a near-exhausted quota fails fast instead of blocking silently) plus a watchdog thread that guarantees every call returns or raises within a bounded time. |
 | **Orchestration** | `graph.py`, `pipeline/` | The topology above wired as a LangGraph state machine. `build_graph()` wires stub nodes (topology-only proof); `build_pipeline_graph()` wires the real components via `pipeline.nodes.PipelineNodes`. |
+| **Eval harness** | `eval/` | Precision/recall/catch-rate scoring against the labeled set, the 3-baseline cost comparison, and the quality-regression spot check — all reused by `scripts/run_eval.py`. |
+| **Dashboard** | `dashboard/` | Streamlit UI over the eval report; `dashboard/data.py` is pure data-transform (no Streamlit import), independently unit-tested. |
 
-## Setup
+## Tech stack
+
+- **Language / packaging**: Python 3.11+, `setuptools`, `pytest`
+- **Orchestration**: [LangGraph](https://github.com/langchain-ai/langgraph) — the pipeline is a real `StateGraph` with conditional edges, not a linear script
+- **Inference**: [Groq](https://groq.com) (`llama-3.1-8b-instant` cheap tier, `llama-3.3-70b-versatile` strong tier), via a thin `requests`-based client
+- **Embeddings**: `sentence-transformers` (`all-MiniLM-L6-v2`), local, no API cost
+- **Vector search**: FAISS, local
+- **Dashboard**: Streamlit + pandas
+- **Data**: ShareGPT (replay traffic) + a hand-built, hand-verified labeled adversarial set
+
+## Evaluation methodology & limitations
+
+**Methodology.** `scripts/run_eval.py` runs, in one pass: (1) cache
+precision/recall against 100 hand-labeled pairs, (2) router accuracy
+against 50 hand-labeled complexity-mislabeled items, (3) verifier catch
+rate on both the cache and route paths, (4) a 3-baseline cost comparison
+(`no_system` / `cache_router_no_verifier` / `full_system`) replayed over
+the same sample of real ShareGPT traffic, and (5) an LLM-judged
+quality-regression spot check. Full methodology and numbers:
+[`data/eval_report.md`](data/eval_report.md), [`data/README.md`](data/README.md).
+
+**Known limitations, stated plainly:**
+
+- **The replay sample is small (30 queries) and not repetitive.** Groq's
+  free-tier rate limits make a full 5,000-query × 3-baseline replay
+  impractical (~15+ hours) — see `run_eval.py`'s module docstring. At
+  n=30 with zero semantic duplicates by chance, **no baseline saw a
+  single cache hit**, so the reported -0.6% cost delta reflects
+  router/verifier efficiency only, not caching. It is not a caching
+  benchmark, and shouldn't be read as one.
+- **A dedicated cache-reuse benchmark is implemented but has not been
+  run.** `eval/cache_reuse_benchmark.py` and `scripts/run_eval.py
+  --cache-reuse-only` add a second, explicitly synthetic evaluation:
+  seeded true-duplicate pairs from the same labeled set, each asked
+  twice (original, then paraphrase) through both `no_system` and
+  `full_system`, with a cache freshly isolated per pair so no pair can
+  leak into another's result — designed specifically to measure cost
+  savings on a workload that actually has repetition in it. The harness
+  is fully implemented and unit-tested offline (fakes, no network), but
+  has not yet been executed against the live API, so **no result is
+  reported here** — an unfinished number isn't a finding.
+- **Some sub-metrics have very small n.** Route-verification catch rate
+  is 0.0% on n=1; the quality spot check is n=3. Both are reported as-is
+  rather than hidden, but neither generalizes.
+- **No load testing, concurrency testing, or CI** — out of scope by
+  design (see [Non-goals](#non-goals)).
+- **No trained routing classifier** — the router is a prompt-based
+  few-shot classifier, a deliberate scope choice for a solo build.
+
+## Dashboard / Demo
+
+```bash
+streamlit run dashboard/app.py
+```
+
+Reads `data/eval_report.json` (produced by `scripts/run_eval.py`) and
+shows, without any live API calls: a results-at-a-glance summary,
+natural-replay cost comparison and cumulative-cost chart, cache-hit-rate
+over time, path distribution, cache/router/verifier precision-recall-
+catch-rate, and the quality-regression spot check. `dashboard/data.py`
+holds all data transforms as plain, Streamlit-free functions — tested
+independently of the UI layer.
+
+## Setup & Usage
 
 Requires Python ≥3.11 and a free [Groq](https://console.groq.com) API key (no card required).
 
@@ -107,10 +177,7 @@ cp .env.example .env            # then fill in GROQ_API_KEY
 ```
 
 `GROQ_CHEAP_MODEL` / `GROQ_STRONG_MODEL` in `.env` are optional overrides
-of the defaults (`llama-3.1-8b-instant` / `llama-3.3-70b-versatile`), in
-case Groq renames or retires a model.
-
-## Usage
+of the defaults, in case Groq renames or retires a model.
 
 ```bash
 # Run one query through the real pipeline
@@ -123,6 +190,10 @@ python scripts/tune_cache_thresholds.py
 # comparison over replayed traffic (writes data/eval_report.json / .md)
 python scripts/run_eval.py
 
+# Run only the cache-reuse benchmark against an existing report,
+# without re-running the full evaluation (see Limitations above)
+python scripts/run_eval.py --cache-reuse-only --cache-reuse-pairs 10
+
 # View the results
 streamlit run dashboard/app.py
 
@@ -130,68 +201,20 @@ streamlit run dashboard/app.py
 python scripts/prepare_replay_sample.py
 ```
 
-## Evaluation results
-
-Full numbers and methodology: [`data/eval_report.md`](data/eval_report.md) ·
-[`data/README.md`](data/README.md). From the current committed run
-(100 labeled cache pairs, 50 labeled complexity items, 30 replay queries):
-
-**Cache** — 50.0% precision / 100.0% recall via the real `SemanticCache`.
-Precision is capped by genuine overlap between this project's
-true-duplicate and near-miss similarity distributions under
-`all-MiniLM-L6-v2` (near-miss pairs range up to 0.996 cosine similarity,
-true-duplicate pairs only up to 0.973) — an empirical confirmation of
-the GPTCache failure mode this project targets, and the reason the
-risky band exists instead of a single threshold.
-
-**Router** — 98.0% complex-recall: 49/50 adversarial, simply-worded-but-actually-complex
-items were correctly routed to the strong model.
-
-**Verifier** — 100.0% near-miss catch rate (every risky-band near-miss
-correctly failed), 85.7% true-duplicate pass rate (occasionally
-over-cautious with genuine duplicates). Route-verification catch rate
-is 0.0%, but on n=1 — one router misroute occurred in this sample,
-reported as-is rather than hidden.
-
-**Baselines** (no-system / cache+router without verifier / full system),
-replayed over the same traffic sample:
-
-| baseline | queries | mean cost/query | total cost | mean LLM calls | cache hit rate |
-|---|---:|---:|---:|---:|---:|
-| no_system | 30 | $0.000494 | $0.014812 | 1.00 | 0.0% |
-| cache_router_no_verifier | 24 | $0.000533 | $0.012797 | 2.00 | 0.0% |
-| full_system | 24 | $0.000491 | $0.011773 | 2.12 | 0.0% |
-
-Full-system cost was ~0.6% below the no-system baseline. The verifier's
-own overhead (full_system mean cost minus cache_router_no_verifier mean
-cost) was **-$0.000043/query** — negative, meaning full_system actually
-came out slightly *cheaper* than the unverified pipeline on this sample,
-not more expensive; on a sample this small that's noise, not a claim
-that verification is free, but it does show the gate isn't adding a
-meaningful cost tax. With zero semantic duplicates among 30 random
-diverse queries, no baseline saw a cache hit in this particular run — caching's benefit shows up over
-larger or more repetitive traffic, not a small random sample; see
-`data/eval_report.md` for the full discussion.
-
-**Quality spot check** — 100% comparable-to-strong-model rate, judged by
-the strong model itself, on non-strong-model responses.
-
-Re-run `python scripts/run_eval.py` for fresh numbers against a larger
-`--replay-sample-size`; the default of 30 is deliberately small given
-Groq's free-tier rate limits (see the script's module docstring).
-
 ## Testing
 
 ```bash
 pytest
 ```
 
-229 tests, deliberately light per this project's own scope: the labeled
-adversarial set drives precision/recall/catch-rate numbers, and the eval
-harness above is the correctness signal against real traffic. No load
-testing, concurrency testing, or CI — out of scope (see [Non-goals](#non-goals)).
+254 offline tests (fakes only, no network) plus a handful of real-API
+integration tests that auto-skip unless `GROQ_API_KEY` is set. Testing
+is deliberately light per this project's own scope: the labeled
+adversarial set drives the precision/recall/catch-rate numbers, and the
+eval harness above is the correctness signal against real traffic —
+see [Non-goals](#non-goals).
 
-## Project layout
+## Project structure
 
 ```
 src/verified_cost_router/
@@ -200,7 +223,7 @@ src/verified_cost_router/
   verifier/     cache-hit and output verification agent
   llm/          Groq chat-completions client + generation helper
   pipeline/     real LangGraph node implementations, request logging
-  eval/         precision/recall/catch-rate + baseline-comparison harness
+  eval/         precision/recall/catch-rate + baseline/cache-reuse harness
   dashboard/    Streamlit data-transform layer (no Streamlit import)
   data_prep/    ShareGPT replay sampling, adversarial eval set loading
   graph.py      LangGraph topology (shared by stub and real nodes)
