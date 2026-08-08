@@ -112,7 +112,7 @@ def main() -> None:
                 "cache_hit_rate": "{:.1%}",
             }
         ),
-        use_container_width=True,
+        width="stretch",
     )
 
     no_system_cost = summary.loc["no_system", "mean_cost_usd"]
@@ -229,7 +229,7 @@ def main() -> None:
     st.metric("Comparable-to-strong-model rate", f"{report.quality_spot_check.comparable_rate:.1%}")
     spot_check_df = quality_spot_check_table(report)
     if not spot_check_df.empty:
-        st.dataframe(spot_check_df, use_container_width=True)
+        st.dataframe(spot_check_df, width="stretch")
     else:
         st.info("No responses were spot-checked in this report.")
 
