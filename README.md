@@ -10,8 +10,9 @@
 [![Orchestration](https://img.shields.io/badge/orchestration-LangGraph-1C3C3C)](https://github.com/langchain-ai/langgraph)
 [![Inference](https://img.shields.io/badge/inference-Groq-F55036?logo=groq&logoColor=white)](https://groq.com)
 [![Dashboard](https://img.shields.io/badge/dashboard-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](dashboard/app.py)
+[![Live Demo](https://img.shields.io/badge/live%20demo-Streamlit%20Cloud-FF4B4B?logo=streamlit&logoColor=white)](https://verified-cost-router-1.streamlit.app/)
 
-[Problem](#the-problem) · [Results](#key-results) · [Architecture](#architecture--pipeline) · [Methodology & limitations](#evaluation-methodology--limitations) · [Dashboard](#dashboard--demo) · [Setup](#setup--usage)
+[Live Demo](https://verified-cost-router-1.streamlit.app/) · [Problem](#the-problem) · [Results](#key-results) · [Architecture](#architecture--pipeline) · [Methodology & limitations](#evaluation-methodology--limitations) · [Dashboard](#dashboard--demo) · [Setup](#setup--usage)
 
 </div>
 
@@ -151,6 +152,10 @@ quality-regression spot check. Full methodology and numbers:
   few-shot classifier, a deliberate scope choice for a solo build.
 
 ## Dashboard / Demo
+
+**Live demo**: [verified-cost-router-1.streamlit.app](https://verified-cost-router-1.streamlit.app/) — deployed on Streamlit Community Cloud, reading the same committed `data/eval_report.json` as below.
+
+Or run it locally:
 
 ```bash
 streamlit run dashboard/app.py
