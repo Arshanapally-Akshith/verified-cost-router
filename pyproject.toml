@@ -2,7 +2,7 @@
 name = "verified-cost-router"
 version = "0.1.0"
 description = "Verified Cost Router: semantic cache + complexity routing + verification gate for LLM API calls."
-requires-python = ">=3.11"
+requires-python = ">=3.11,<4.0"
 dependencies = [
     "langgraph>=1.2,<2.0",
     "requests>=2.31",
