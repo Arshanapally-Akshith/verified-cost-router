@@ -35,3 +35,19 @@
 - comparable-to-strong-model rate: 100.0%
 - responses spot-checked: 3
 
+## Cache-reuse benchmark (synthetic, illustrative -- see eval.cache_reuse_benchmark)
+
+Seeded true_duplicate pairs from the labeled adversarial eval set, each asked as two queries (original, then paraphrase); full_system uses a fresh, isolated cache per pair so no pair's cached answer can affect another pair's result.
+
+- population (true_duplicate pairs available): 50
+- sample percentage: 20%
+- seed: 42
+- sample size: 10 pairs (20 queries)
+
+| system | queries | mean cost/query (USD) | cache hit rate |
+|---|---:|---:|---:|
+| no_system | 20 | 0.000272 | 0.0% |
+| full_system | 20 | 0.000103 | 50.0% |
+
+- cache-reuse savings vs. no-system: 62.2%
+

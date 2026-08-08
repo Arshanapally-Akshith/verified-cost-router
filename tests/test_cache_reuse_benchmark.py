@@ -46,7 +46,7 @@ def _pair(id_: str, category: str) -> CachePair:
 def test_select_cache_reuse_pairs_only_returns_true_duplicates():
     pairs = [_pair("dup1", "true_duplicate"), _pair("nm1", "near_miss"), _pair("dup2", "true_duplicate")]
 
-    selected = select_cache_reuse_pairs(pairs, n=2, seed=0)
+    selected = select_cache_reuse_pairs(pairs, sample_pct=1.0, seed=0)
 
     assert len(selected) == 2
     assert all(p.category == "true_duplicate" for p in selected)
@@ -55,8 +55,8 @@ def test_select_cache_reuse_pairs_only_returns_true_duplicates():
 def test_select_cache_reuse_pairs_is_deterministic_for_a_given_seed():
     pairs = [_pair(f"dup{i}", "true_duplicate") for i in range(10)]
 
-    first = select_cache_reuse_pairs(pairs, n=4, seed=7)
-    second = select_cache_reuse_pairs(pairs, n=4, seed=7)
+    first = select_cache_reuse_pairs(pairs, sample_pct=0.4, seed=7)
+    second = select_cache_reuse_pairs(pairs, sample_pct=0.4, seed=7)
 
     assert first == second
 
@@ -64,16 +64,24 @@ def test_select_cache_reuse_pairs_is_deterministic_for_a_given_seed():
 def test_select_cache_reuse_pairs_different_seeds_can_select_differently():
     pairs = [_pair(f"dup{i}", "true_duplicate") for i in range(20)]
 
-    a = select_cache_reuse_pairs(pairs, n=5, seed=1)
-    b = select_cache_reuse_pairs(pairs, n=5, seed=2)
+    a = select_cache_reuse_pairs(pairs, sample_pct=0.25, seed=1)
+    b = select_cache_reuse_pairs(pairs, sample_pct=0.25, seed=2)
 
     assert a != b
+
+
+def test_select_cache_reuse_pairs_samples_the_given_percentage_of_the_population():
+    pairs = [_pair(f"dup{i}", "true_duplicate") for i in range(50)]
+
+    selected = select_cache_reuse_pairs(pairs, sample_pct=0.2, seed=0)
+
+    assert len(selected) == 10
 
 
 def test_select_cache_reuse_pairs_caps_at_available_true_duplicates():
     pairs = [_pair("dup1", "true_duplicate"), _pair("nm1", "near_miss")]
 
-    selected = select_cache_reuse_pairs(pairs, n=10, seed=0)
+    selected = select_cache_reuse_pairs(pairs, sample_pct=5.0, seed=0)
 
     assert len(selected) == 1
 

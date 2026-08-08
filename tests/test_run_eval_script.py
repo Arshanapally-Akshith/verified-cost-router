@@ -87,7 +87,7 @@ def _sample_report() -> EvalReport:
 # --- run_cache_reuse_step ------------------------------------------------------
 
 
-def test_run_cache_reuse_step_returns_empty_dict_when_n_pairs_is_zero():
+def test_run_cache_reuse_step_returns_empty_dict_when_sample_pct_is_zero():
     result = run_eval.run_cache_reuse_step(
         _eval_set(3), 0, 42, FakeEmbedder(), THRESHOLDS, _classifier(), _verifier(),
         FakeChatCompletionClient(next_content="answer"), GROQ_SETTINGS,
@@ -97,12 +97,12 @@ def test_run_cache_reuse_step_returns_empty_dict_when_n_pairs_is_zero():
 
 def test_run_cache_reuse_step_returns_no_system_and_full_system_keyed_results():
     result = run_eval.run_cache_reuse_step(
-        _eval_set(3), 2, 42, FakeEmbedder(), THRESHOLDS, _classifier(), _verifier(),
+        _eval_set(3), 0.7, 42, FakeEmbedder(), THRESHOLDS, _classifier(), _verifier(),
         FakeChatCompletionClient(next_content="answer"), GROQ_SETTINGS,
     )
 
     assert set(result.keys()) == {"no_system", "full_system"}
-    assert len(result["no_system"]) == 4  # 2 pairs x 2 queries
+    assert len(result["no_system"]) == 4  # round(3 * 0.7) = 2 pairs x 2 queries
     assert len(result["full_system"]) == 4
     assert all(r.path_taken == "no_system" for r in result["no_system"])
 
@@ -110,9 +110,9 @@ def test_run_cache_reuse_step_returns_no_system_and_full_system_keyed_results():
 # --- run_cache_reuse_only --------------------------------------------------
 
 
-def _args(tmp_path: Path, cache_reuse_pairs: int = 2, seed: int = 42) -> argparse.Namespace:
+def _args(tmp_path: Path, cache_reuse_sample_pct: float = 0.7, seed: int = 42) -> argparse.Namespace:
     return argparse.Namespace(
-        cache_reuse_pairs=cache_reuse_pairs,
+        cache_reuse_sample_pct=cache_reuse_sample_pct,
         report_json=tmp_path / "eval_report.json",
         report_md=tmp_path / "eval_report.md",
         seed=seed,
@@ -120,9 +120,9 @@ def _args(tmp_path: Path, cache_reuse_pairs: int = 2, seed: int = 42) -> argpars
 
 
 def test_run_cache_reuse_only_exits_if_pairs_not_positive(tmp_path: Path):
-    args = _args(tmp_path, cache_reuse_pairs=0)
+    args = _args(tmp_path, cache_reuse_sample_pct=0)
 
-    with pytest.raises(SystemExit, match="cache-reuse-pairs"):
+    with pytest.raises(SystemExit, match="cache-reuse-sample-pct"):
         run_eval.run_cache_reuse_only(
             args, _eval_set(3), FakeEmbedder(), THRESHOLDS, _classifier(), _verifier(),
             FakeChatCompletionClient(next_content="answer"), GROQ_SETTINGS,
@@ -141,7 +141,7 @@ def test_run_cache_reuse_only_exits_if_report_json_missing(tmp_path: Path):
 
 def test_run_cache_reuse_only_preserves_every_other_section_unchanged(tmp_path: Path):
     original = _sample_report()
-    args = _args(tmp_path, cache_reuse_pairs=2)
+    args = _args(tmp_path, cache_reuse_sample_pct=0.7)
     original.write(args.report_json, args.report_md)
 
     run_eval.run_cache_reuse_only(
@@ -150,21 +150,26 @@ def test_run_cache_reuse_only_preserves_every_other_section_unchanged(tmp_path: 
     )
 
     updated = load_eval_report(args.report_json)
-    # Everything except cache_reuse_raw_results is carried over byte-for-byte.
+    # Everything except cache_reuse_raw_results (and its sampling metadata)
+    # is carried over byte-for-byte.
     assert updated.cache_eval == original.cache_eval
     assert updated.router_eval == original.router_eval
     assert updated.cache_verifier_eval == original.cache_verifier_eval
     assert updated.route_verifier_eval == original.route_verifier_eval
     assert updated.baseline_raw_results == original.baseline_raw_results
     assert updated.quality_spot_check == original.quality_spot_check
-    # The cache-reuse benchmark itself was actually run and written.
+    # The cache-reuse benchmark itself was actually run and written, along
+    # with the sampling provenance (population/pct/seed) that produced it.
     assert set(updated.cache_reuse_raw_results.keys()) == {"no_system", "full_system"}
     assert len(updated.cache_reuse_raw_results["no_system"]) == 4
+    assert updated.cache_reuse_population_size == 3
+    assert updated.cache_reuse_sample_pct == 0.7
+    assert updated.cache_reuse_seed == 42
 
 
 def test_run_cache_reuse_only_does_not_touch_report_md_content_of_other_sections(tmp_path: Path):
     original = _sample_report()
-    args = _args(tmp_path, cache_reuse_pairs=2)
+    args = _args(tmp_path, cache_reuse_sample_pct=0.7)
     original.write(args.report_json, args.report_md)
 
     run_eval.run_cache_reuse_only(

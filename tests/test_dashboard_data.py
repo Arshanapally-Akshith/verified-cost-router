@@ -34,7 +34,14 @@ def _result(query, cost, calls, cache, strong, path):
     )
 
 
-def _report(baseline_raw_results, quality_items=(), cache_reuse_raw_results=None):
+def _report(
+    baseline_raw_results,
+    quality_items=(),
+    cache_reuse_raw_results=None,
+    cache_reuse_population_size=0,
+    cache_reuse_sample_pct=0.0,
+    cache_reuse_seed=0,
+):
     return EvalReport(
         cache_eval=CacheEvalResult(outcomes=()),
         router_eval=RouterEvalResult(outcomes=()),
@@ -43,6 +50,9 @@ def _report(baseline_raw_results, quality_items=(), cache_reuse_raw_results=None
         baseline_raw_results=baseline_raw_results,
         quality_spot_check=QualitySpotCheckResult(items=quality_items),
         cache_reuse_raw_results=cache_reuse_raw_results or {},
+        cache_reuse_population_size=cache_reuse_population_size,
+        cache_reuse_sample_pct=cache_reuse_sample_pct,
+        cache_reuse_seed=cache_reuse_seed,
     )
 
 
@@ -243,7 +253,13 @@ def test_cache_reuse_path_distribution_independent_of_baseline_raw_results():
 
 
 def test_compute_cache_reuse_metrics_computes_savings_and_hit_rate():
-    report = _report({}, cache_reuse_raw_results=_reuse_raw_results())
+    report = _report(
+        {},
+        cache_reuse_raw_results=_reuse_raw_results(),
+        cache_reuse_population_size=50,
+        cache_reuse_sample_pct=0.2,
+        cache_reuse_seed=42,
+    )
 
     m = compute_cache_reuse_metrics(report)
 
@@ -252,6 +268,9 @@ def test_compute_cache_reuse_metrics_computes_savings_and_hit_rate():
     assert m.full_system_mean_cost_usd == 0.001
     assert m.savings_pct == (0.004 - 0.001) / 0.004
     assert m.full_system_cache_hit_rate == 0.5
+    assert m.population_size == 50
+    assert m.sample_pct == 0.2
+    assert m.seed == 42
 
 
 def test_compute_cache_reuse_metrics_handles_absent_benchmark():
@@ -262,6 +281,8 @@ def test_compute_cache_reuse_metrics_handles_absent_benchmark():
     assert m.pair_count == 0
     assert m.no_system_mean_cost_usd == 0.0
     assert m.full_system_mean_cost_usd == 0.0
+    assert m.population_size == 0
+    assert m.sample_pct == 0.0
     assert m.savings_pct == 0.0
 
 

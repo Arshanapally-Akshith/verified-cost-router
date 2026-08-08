@@ -57,11 +57,21 @@ logger = logging.getLogger(__name__)
 _SKIPPABLE_ERRORS = (ClassificationError, VerificationError, GroqAPIError, GroqRateLimitError)
 
 
-def select_cache_reuse_pairs(cache_pairs: Sequence[CachePair], n: int, seed: int) -> tuple[CachePair, ...]:
-    """A seeded random sample of `n` true_duplicate pairs -- not the
-    "best" or most-similar ones, so the benchmark can't be accused of
-    cherry-picking pairs that flatter the cache hit rate."""
+def select_cache_reuse_pairs(
+    cache_pairs: Sequence[CachePair], sample_pct: float, seed: int
+) -> tuple[CachePair, ...]:
+    """A seeded random sample of `sample_pct` of the available
+    true_duplicate pairs -- not the "best" or most-similar ones, so the
+    benchmark can't be accused of cherry-picking pairs that flatter the
+    cache hit rate.
+
+    Data-driven (a fraction of whatever the labeled eval set happens to
+    contain) rather than a hardcoded pair count, so the sample size tracks
+    the population instead of silently under- or over-sampling it as the
+    labeled set grows or shrinks.
+    """
     true_duplicates = [pair for pair in cache_pairs if pair.category == "true_duplicate"]
+    n = round(len(true_duplicates) * sample_pct)
     rng = random.Random(seed)
     return tuple(rng.sample(true_duplicates, k=min(n, len(true_duplicates))))
 

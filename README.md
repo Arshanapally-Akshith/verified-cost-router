@@ -6,7 +6,7 @@
 
 [![Version](https://img.shields.io/badge/version-v1.0.0-blue)](https://github.com/Arshanapally-Akshith/verified-cost-router/releases/tag/v1.0.0)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white)](pyproject.toml)
-[![Tests](https://img.shields.io/badge/tests-254%20passing-brightgreen)](#testing)
+[![Tests](https://img.shields.io/badge/tests-264%20passing-brightgreen)](#testing)
 [![Orchestration](https://img.shields.io/badge/orchestration-LangGraph-1C3C3C)](https://github.com/langchain-ai/langgraph)
 [![Inference](https://img.shields.io/badge/inference-Groq-F55036?logo=groq&logoColor=white)](https://groq.com)
 [![Dashboard](https://img.shields.io/badge/dashboard-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](dashboard/app.py)
@@ -132,17 +132,24 @@ quality-regression spot check. Full methodology and numbers:
   single cache hit**, so the reported -0.6% cost delta reflects
   router/verifier efficiency only, not caching. It is not a caching
   benchmark, and shouldn't be read as one.
-- **A dedicated cache-reuse benchmark is implemented but has not been
-  run.** `eval/cache_reuse_benchmark.py` and `scripts/run_eval.py
-  --cache-reuse-only` add a second, explicitly synthetic evaluation:
-  seeded true-duplicate pairs from the same labeled set, each asked
-  twice (original, then paraphrase) through both `no_system` and
-  `full_system`, with a cache freshly isolated per pair so no pair can
-  leak into another's result — designed specifically to measure cost
-  savings on a workload that actually has repetition in it. The harness
-  is fully implemented and unit-tested offline (fakes, no network), but
-  has not yet been executed against the live API, so **no result is
-  reported here** — an unfinished number isn't a finding.
+- **A dedicated cache-reuse benchmark, on a deliberately synthetic
+  workload.** `eval/cache_reuse_benchmark.py` and `scripts/run_eval.py
+  --cache-reuse-only` add a second evaluation: a seeded random sample of
+  the labeled set's true-duplicate pairs, each asked twice (original,
+  then paraphrase) through both `no_system` and `full_system`, with a
+  cache freshly isolated per pair so no pair can leak into another's
+  result. The sample is data-driven, not a hardcoded count — 20% of
+  whatever the labeled set's true-duplicate pairs happen to number
+  (currently 50), seeded for reproducibility (`--cache-reuse-sample-pct`,
+  default 0.2; `--seed`, default 42; population/percentage/seed/sample
+  size are all recorded in [`data/eval_report.md`](data/eval_report.md)
+  and the dashboard). At 10/50 (seed 42): **62.2% cost savings**
+  vs. no-system, 50% cache hit rate — a real, unmodified number from
+  that report, on a workload constructed specifically to contain
+  repetition (unlike the 30-query natural replay above, which saw none
+  by chance). Small n and a synthetic workload — illustrative of the
+  cache paying off when it actually gets hit, not a claim about typical
+  traffic.
 - **Some sub-metrics have very small n.** Route-verification catch rate
   is 0.0% on n=1; the quality spot check is n=3. Both are reported as-is
   rather than hidden, but neither generalizes.
@@ -197,7 +204,7 @@ python scripts/run_eval.py
 
 # Run only the cache-reuse benchmark against an existing report,
 # without re-running the full evaluation (see Limitations above)
-python scripts/run_eval.py --cache-reuse-only --cache-reuse-pairs 10
+python scripts/run_eval.py --cache-reuse-only
 
 # View the results
 streamlit run dashboard/app.py

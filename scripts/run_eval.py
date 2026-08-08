@@ -4,7 +4,7 @@ section 5: "Eval harness produces the precision/recall + cost numbers
 
 Usage:
     python scripts/run_eval.py [--replay-sample-size 30] [--quality-sample-size 8]
-                                [--cache-reuse-pairs 10] [--cache-reuse-only] [--seed 42]
+                                [--cache-reuse-sample-pct 0.2] [--cache-reuse-only] [--seed 42]
 
 Requires GROQ_API_KEY and data/cache_thresholds.json (Phase 2). Reads
 data/adversarial_eval_set.json (Phase 1) and data/replay_sample.jsonl
@@ -19,26 +19,31 @@ plus the free tier's 30 RPM cap make a full 5,000-query x 3-baseline
 run impractical (~15+ hours). Pass a larger --replay-sample-size for a
 more thorough run if you have the time and quota.
 
---cache-reuse-pairs (default 10, 0 disables) runs a small, separate
-benchmark after the 3 baselines: seeded true_duplicate pairs from the
-same labeled adversarial eval set, each pair asked as 2 queries
+--cache-reuse-sample-pct (default 0.2, i.e. 20%; 0 disables) runs a
+small, separate benchmark after the 3 baselines: a seeded random sample
+of that percentage of the true_duplicate pairs in the labeled
+adversarial eval set (data-driven -- tracks however many true_duplicate
+pairs that set actually has, instead of a hardcoded pair count that
+could silently over- or under-sample it), each pair asked as 2 queries
 (original, then paraphrase) through both no_system and full_system --
 full_system gets its own fresh, isolated cache per pair, so no pair's
 cached answer can affect another pair's result -- giving a real
 cost-savings number for a workload that actually has cache reuse in it.
-See verified_cost_router.eval.cache_reuse_benchmark for why this exists.
-It never touches baseline_raw_results, so the 3-baseline natural-replay
+20% of the current 50 true_duplicate pairs is 10 pairs (20 queries),
+comfortably inside the free tier's 30 RPM cap. See
+verified_cost_router.eval.cache_reuse_benchmark for why this exists. It
+never touches baseline_raw_results, so the 3-baseline natural-replay
 comparison above is unaffected by it.
 
 --cache-reuse-only skips the 6-step evaluation entirely (no cache/
 router/verifier evals, no 3-baseline replay -- none of the Groq calls
 those make) and only runs the cache-reuse benchmark above, against an
 *existing* report at --report-json: every other section of that report
-is carried over unchanged, and only cache_reuse_raw_results is replaced.
-Lets the benchmark be iterated on (different --cache-reuse-pairs, a
-code fix, etc.) without re-running the full evaluation each time. Fails
-fast if --report-json doesn't exist yet -- run once without this flag
-first.
+is carried over unchanged, and only cache_reuse_raw_results (plus its
+population/sample-pct/seed metadata) is replaced. Lets the benchmark be
+iterated on (different --cache-reuse-sample-pct, a code fix, etc.)
+without re-running the full evaluation each time. Fails fast if
+--report-json doesn't exist yet -- run once without this flag first.
 """
 
 from __future__ import annotations
@@ -133,11 +138,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--replay-sample-size", type=int, default=30)
     parser.add_argument("--quality-sample-size", type=int, default=8)
     parser.add_argument(
-        "--cache-reuse-pairs",
-        type=int,
-        default=10,
-        help="Seeded true_duplicate pairs (from the labeled adversarial eval set) for the "
-        "cache-reuse benchmark, each asked as 2 queries. 0 disables the benchmark.",
+        "--cache-reuse-sample-pct",
+        type=float,
+        default=0.2,
+        help="Fraction (0-1) of the labeled adversarial eval set's true_duplicate pairs to "
+        "seed-sample for the cache-reuse benchmark, each selected pair asked as 2 queries. "
+        "Data-driven -- tracks the true_duplicate population instead of a hardcoded pair "
+        "count. 0 disables the benchmark. Default 0.2 (20%%) keeps the sample comfortably "
+        "inside the free tier's 30 RPM cap on the current eval set.",
     )
     parser.add_argument(
         "--cache-reuse-only",
@@ -145,7 +153,7 @@ def parse_args() -> argparse.Namespace:
         help="Skip the 6-step evaluation (no cache/router/verifier evals, no 3-baseline "
         "replay) and only run the cache-reuse benchmark, merging its results into the "
         "existing report at --report-json (every other section is carried over unchanged). "
-        "Requires that report to already exist and --cache-reuse-pairs > 0.",
+        "Requires that report to already exist and --cache-reuse-sample-pct > 0.",
     )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--report-json", type=Path, default=DEFAULT_REPORT_JSON)
@@ -159,9 +167,13 @@ def load_replay_queries(path: Path, sample_size: int, rng: random.Random) -> lis
     return rng.sample(all_queries, k=min(sample_size, len(all_queries)))
 
 
+def _true_duplicate_population(eval_set: AdversarialEvalSet) -> int:
+    return sum(1 for pair in eval_set.cache_pairs if pair.category == "true_duplicate")
+
+
 def run_cache_reuse_step(
     eval_set: AdversarialEvalSet,
-    n_pairs: int,
+    sample_pct: float,
     seed: int,
     embedder: EmbeddingModel,
     thresholds: CacheThresholds,
@@ -170,21 +182,26 @@ def run_cache_reuse_step(
     groq_client: ChatCompletionClient,
     groq_settings: GroqSettings,
 ) -> dict[str, tuple]:
-    """Select `n_pairs` seeded true_duplicate pairs and run the cache-reuse
-    benchmark (see eval.cache_reuse_benchmark), returning results keyed
-    like baseline_raw_results (NO_SYSTEM / FULL_SYSTEM). Empty if
-    `n_pairs <= 0`. Shared by both the normal 6-step run and
+    """Select a seeded `sample_pct` fraction of the eval set's
+    true_duplicate pairs and run the cache-reuse benchmark (see
+    eval.cache_reuse_benchmark), returning results keyed like
+    baseline_raw_results (NO_SYSTEM / FULL_SYSTEM). Empty if
+    `sample_pct <= 0`. Shared by both the normal 6-step run and
     --cache-reuse-only, so the benchmark behaves identically either way.
     """
-    if n_pairs <= 0:
+    if sample_pct <= 0:
         return {}
 
-    cache_reuse_pairs = select_cache_reuse_pairs(eval_set.cache_pairs, n_pairs, seed)
+    population_size = _true_duplicate_population(eval_set)
+    cache_reuse_pairs = select_cache_reuse_pairs(eval_set.cache_pairs, sample_pct, seed)
     logger.info(
-        "cache-reuse benchmark: %d seeded true_duplicate pairs (%d queries each "
-        "through no_system and full_system; full_system gets its own fresh, isolated cache "
-        "per pair). Separate from the 3 baselines above -- never merged into them.",
+        "cache-reuse benchmark: sampled %d/%d true_duplicate pairs (%.0f%%, seed=%d) -- "
+        "%d queries each through no_system and full_system; full_system gets its own fresh, "
+        "isolated cache per pair. Separate from the 3 baselines above -- never merged into them.",
         len(cache_reuse_pairs),
+        population_size,
+        sample_pct * 100,
+        seed,
         len(cache_reuse_pairs) * 2,
     )
     cache_reuse_result = run_cache_reuse_benchmark(
@@ -229,8 +246,8 @@ def run_cache_reuse_only(
     can be iterated on without re-running the full 6-step evaluation
     (and its own Groq calls) each time.
     """
-    if args.cache_reuse_pairs <= 0:
-        sys.exit("--cache-reuse-only requires --cache-reuse-pairs > 0 (got 0)")
+    if args.cache_reuse_sample_pct <= 0:
+        sys.exit("--cache-reuse-only requires --cache-reuse-sample-pct > 0 (got 0)")
     if not args.report_json.exists():
         sys.exit(
             f"--cache-reuse-only requires an existing report at {args.report_json} "
@@ -241,11 +258,17 @@ def run_cache_reuse_only(
     existing_report = load_eval_report(args.report_json)
 
     cache_reuse_raw_results = run_cache_reuse_step(
-        eval_set, args.cache_reuse_pairs, args.seed, embedder, thresholds, classifier, verifier,
+        eval_set, args.cache_reuse_sample_pct, args.seed, embedder, thresholds, classifier, verifier,
         groq_client, groq_settings,
     )
 
-    updated_report = dataclasses.replace(existing_report, cache_reuse_raw_results=cache_reuse_raw_results)
+    updated_report = dataclasses.replace(
+        existing_report,
+        cache_reuse_raw_results=cache_reuse_raw_results,
+        cache_reuse_population_size=_true_duplicate_population(eval_set),
+        cache_reuse_sample_pct=args.cache_reuse_sample_pct,
+        cache_reuse_seed=args.seed,
+    )
     updated_report.write(args.report_json, args.report_md)
     logger.info(
         "wrote %s and %s (cache-reuse benchmark only -- every other section unchanged)",
@@ -364,7 +387,7 @@ def main() -> None:
     )
 
     cache_reuse_raw_results = run_cache_reuse_step(
-        eval_set, args.cache_reuse_pairs, args.seed, embedder, thresholds, classifier, verifier,
+        eval_set, args.cache_reuse_sample_pct, args.seed, embedder, thresholds, classifier, verifier,
         groq_client, groq_settings,
     )
 
@@ -377,6 +400,9 @@ def main() -> None:
         baseline_raw_results=baseline_raw_results,
         quality_spot_check=quality_spot_check,
         cache_reuse_raw_results=cache_reuse_raw_results,
+        cache_reuse_population_size=_true_duplicate_population(eval_set) if cache_reuse_raw_results else 0,
+        cache_reuse_sample_pct=args.cache_reuse_sample_pct if cache_reuse_raw_results else 0.0,
+        cache_reuse_seed=args.seed if cache_reuse_raw_results else 0,
     )
     report.write(args.report_json, args.report_md)
     logger.info("wrote %s and %s", args.report_json, args.report_md)

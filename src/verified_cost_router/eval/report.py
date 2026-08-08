@@ -90,6 +90,23 @@ class EvalReport:
     # never be merged into or mistaken for the natural-replay baselines.
     # Empty for every report that predates this benchmark.
     cache_reuse_raw_results: dict[str, tuple[BaselineResult, ...]] = field(default_factory=dict)
+    # Sampling provenance for the cache-reuse benchmark above: how many
+    # true_duplicate pairs the labeled adversarial eval set had to sample
+    # from (population), what fraction of them was sampled, and the seed
+    # used -- so the resulting sample size (population * sample_pct,
+    # cache_reuse_pair_count below) is auditable rather than a bare
+    # number. All 0 for reports that predate percentage-based sampling.
+    cache_reuse_population_size: int = 0
+    cache_reuse_sample_pct: float = 0.0
+    cache_reuse_seed: int = 0
+
+    @property
+    def cache_reuse_pair_count(self) -> int:
+        """Number of pairs actually sampled -- derived from the raw
+        results (2 queries per pair) so it can never drift from what was
+        actually run, even if cache_reuse_population_size/sample_pct are
+        absent (pre-sampling-metadata reports)."""
+        return len(self.cache_reuse_raw_results.get(FULL_SYSTEM, ())) // 2
 
     @property
     def baseline_summaries(self) -> tuple[BaselineSummary, ...]:
@@ -175,6 +192,11 @@ class EvalReport:
                 "Seeded true_duplicate pairs from the labeled adversarial eval set, each asked as two "
                 "queries (original, then paraphrase); full_system uses a fresh, isolated cache per pair "
                 "so no pair's cached answer can affect another pair's result.\n",
+                f"- population (true_duplicate pairs available): {self.cache_reuse_population_size}",
+                f"- sample percentage: {self.cache_reuse_sample_pct:.0%}",
+                f"- seed: {self.cache_reuse_seed}",
+                f"- sample size: {self.cache_reuse_pair_count} pairs "
+                f"({self.cache_reuse_pair_count * 2} queries)\n",
                 "| system | queries | mean cost/query (USD) | cache hit rate |",
                 "|---|---:|---:|---:|",
                 f"| no_system | {reuse_no_system.query_count} | {reuse_no_system.mean_cost_usd:.6f} | "
@@ -254,4 +276,7 @@ def load_eval_report(path: Path) -> EvalReport:
         quality_spot_check=quality_spot_check,
         stored_baseline_summaries=stored_baseline_summaries,
         cache_reuse_raw_results=cache_reuse_raw_results,
+        cache_reuse_population_size=raw.get("cache_reuse_population_size", 0),
+        cache_reuse_sample_pct=raw.get("cache_reuse_sample_pct", 0.0),
+        cache_reuse_seed=raw.get("cache_reuse_seed", 0),
     )

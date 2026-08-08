@@ -18,7 +18,12 @@ from verified_cost_router.eval.verifier_eval import (
 )
 
 
-def _sample_report(cache_reuse_raw_results: dict | None = None) -> EvalReport:
+def _sample_report(
+    cache_reuse_raw_results: dict | None = None,
+    cache_reuse_population_size: int = 0,
+    cache_reuse_sample_pct: float = 0.0,
+    cache_reuse_seed: int = 0,
+) -> EvalReport:
     cache_eval = CacheEvalResult(
         outcomes=(
             CachePairOutcome("dup1", "true_duplicate", True, True, "high_confidence_hit"),
@@ -50,6 +55,9 @@ def _sample_report(cache_reuse_raw_results: dict | None = None) -> EvalReport:
         baseline_raw_results=baseline_raw_results,
         quality_spot_check=quality,
         cache_reuse_raw_results=cache_reuse_raw_results or {},
+        cache_reuse_population_size=cache_reuse_population_size,
+        cache_reuse_sample_pct=cache_reuse_sample_pct,
+        cache_reuse_seed=cache_reuse_seed,
     )
 
 
@@ -259,3 +267,60 @@ def test_to_markdown_includes_cache_reuse_section_only_when_present():
     markdown = with_reuse.to_markdown()
     assert "Cache-reuse benchmark" in markdown
     assert "cache-reuse savings vs. no-system: 75.0%" in markdown
+
+
+def test_to_markdown_documents_sampling_provenance():
+    report = _sample_report(
+        cache_reuse_raw_results=_reuse_results(),
+        cache_reuse_population_size=50,
+        cache_reuse_sample_pct=0.2,
+        cache_reuse_seed=42,
+    )
+    markdown = report.to_markdown()
+
+    assert "population (true_duplicate pairs available): 50" in markdown
+    assert "sample percentage: 20%" in markdown
+    assert "seed: 42" in markdown
+    assert "sample size: 1 pairs (2 queries)" in markdown
+
+
+def test_cache_reuse_pair_count_derived_from_raw_results():
+    report = _sample_report(cache_reuse_raw_results=_reuse_results())
+    assert report.cache_reuse_pair_count == 1  # 2 queries in full_system / 2
+
+
+def test_load_eval_report_round_trips_sampling_provenance(tmp_path: Path):
+    original = _sample_report(
+        cache_reuse_raw_results=_reuse_results(),
+        cache_reuse_population_size=50,
+        cache_reuse_sample_pct=0.2,
+        cache_reuse_seed=42,
+    )
+    json_path = tmp_path / "report.json"
+    md_path = tmp_path / "report.md"
+    original.write(json_path, md_path)
+
+    loaded = load_eval_report(json_path)
+
+    assert loaded.cache_reuse_population_size == 50
+    assert loaded.cache_reuse_sample_pct == 0.2
+    assert loaded.cache_reuse_seed == 42
+
+
+def test_load_eval_report_defaults_sampling_provenance_when_absent(tmp_path: Path):
+    """A report from before percentage-based sampling has no
+    cache_reuse_population_size/sample_pct/seed keys -- must load with
+    the neutral 0 defaults, not raise."""
+    original = _sample_report(cache_reuse_raw_results=_reuse_results())
+    raw = json.loads(original.to_json())
+    del raw["cache_reuse_population_size"]
+    del raw["cache_reuse_sample_pct"]
+    del raw["cache_reuse_seed"]
+    json_path = tmp_path / "report.json"
+    json_path.write_text(json.dumps(raw), encoding="utf-8")
+
+    loaded = load_eval_report(json_path)
+
+    assert loaded.cache_reuse_population_size == 0
+    assert loaded.cache_reuse_sample_pct == 0.0
+    assert loaded.cache_reuse_seed == 0

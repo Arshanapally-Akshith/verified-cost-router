@@ -161,7 +161,9 @@ def main() -> None:
             "workload that actually has cache reuse in it. full_system uses a fresh, isolated "
             "cache **per pair**, so one pair's cached answer can never affect another pair's "
             "result. This is a deliberately repetitive, illustrative workload, **not** "
-            "representative of the natural replay traffic above."
+            "representative of the natural replay traffic above.\n\n"
+            f"**Sampling:** {reuse.pair_count} of {reuse.population_size} available true_duplicate "
+            f"pairs ({reuse.sample_pct:.0%}, seed={reuse.seed})."
         )
         rc1, rc2, rc3, rc4 = st.columns(4)
         rc1.metric("no_system mean cost/query", f"${reuse.no_system_mean_cost_usd:.6f}")
@@ -178,7 +180,7 @@ def main() -> None:
     else:
         st.info(
             "Not present in this report. Run `python scripts/run_eval.py` "
-            "(cache-reuse benchmark runs by default, `--cache-reuse-pairs 0` disables it) "
+            "(cache-reuse benchmark runs by default, `--cache-reuse-sample-pct 0` disables it) "
             "to populate this section."
         )
 

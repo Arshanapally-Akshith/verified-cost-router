@@ -157,9 +157,17 @@ def cache_reuse_path_distribution(report: EvalReport) -> pd.DataFrame:
 class CacheReuseMetrics:
     """no_system vs full_system on the cache-reuse benchmark's own
     workload -- the same shape as the natural-replay cost comparison in
-    HeadlineMetrics, scoped to this separate, synthetic benchmark."""
+    HeadlineMetrics, scoped to this separate, synthetic benchmark.
+
+    population_size/sample_pct/seed document how pair_count was arrived
+    at (a seeded percentage sample, not a hardcoded count) so the sample
+    is auditable rather than a bare number.
+    """
 
     pair_count: int
+    population_size: int
+    sample_pct: float
+    seed: int
     no_system_mean_cost_usd: float
     full_system_mean_cost_usd: float
     savings_pct: float
@@ -171,6 +179,9 @@ def compute_cache_reuse_metrics(report: EvalReport) -> CacheReuseMetrics:
     no_system, full_system = summaries[NO_SYSTEM], summaries[FULL_SYSTEM]
     return CacheReuseMetrics(
         pair_count=full_system.query_count // 2,
+        population_size=report.cache_reuse_population_size,
+        sample_pct=report.cache_reuse_sample_pct,
+        seed=report.cache_reuse_seed,
         no_system_mean_cost_usd=no_system.mean_cost_usd,
         full_system_mean_cost_usd=full_system.mean_cost_usd,
         savings_pct=report.cache_reuse_savings_pct,
